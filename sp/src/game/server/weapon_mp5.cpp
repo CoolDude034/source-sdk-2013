@@ -1,6 +1,6 @@
 //========= Copyright Valve Corporation, All rights reserved. ============//
 //
-// Purpose: MP5
+// Purpose: Heckler & Koch MP5
 //
 //=============================================================================//
 
