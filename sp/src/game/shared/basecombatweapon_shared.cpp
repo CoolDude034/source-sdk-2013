@@ -11,7 +11,6 @@
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 #include "physics_saverestore.h"
 #include "datacache/imdlcache.h"
-#include "activitylist.h"
 
 // NVNT start extra includes
 #include "haptics/haptic_utils.h"
