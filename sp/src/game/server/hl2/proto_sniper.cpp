@@ -58,6 +58,24 @@ ConVar showsniperdist("showsniperdist", "0" );
 ConVar sniperspeak( "sniperspeak", "0" );
 ConVar sniper_xbox_delay( "sniper_xbox_delay", "1" );
 
+// Unhidden Snipers, ported from another mod i made
+// Who knows, will i come back developing that other mod? Maybe... someday
+ConVar sniper_riflemodel("sniper_riflemodel", "models/weapons/w_snip_sg550.mdl");
+ConVar sniperrifle_offset_x("sniperrifle_offset_x", "10.5");
+ConVar sniperrifle_offset_y("sniperrifle_offset_y", "-2.5");
+ConVar sniperrifle_offset_z("sniperrifle_offset_z", "45.0");
+ConVar sniperrifle_despawn_t("sniperrifle_despawn_t", "5");
+ConVar sniperrifle_use_attachment("sniperrifle_use_attachment", "1");
+ConVar sniperrifle_attachment_point("sniperrifle_attachment_point", "lefthand");
+
+ConVar sniperrifle_offset_x_attachment("sniperrifle_offset_x_attachment", "-3.5");
+ConVar sniperrifle_offset_y_attachment("sniperrifle_offset_y_attachment", "-7.5");
+ConVar sniperrifle_offset_z_attachment("sniperrifle_offset_z_attachment", "0");
+
+ConVar sv_npc_sniper_use_aiming_anims("sv_npc_sniper_use_aiming_anims", "1");
+
+ConVar sk_npc_sniper_firerate("sk_npc_sniper_firerate", "5.0");
+
 // Moved to HL2_SharedGameRules because these are referenced by shared AmmoDef functions
 extern ConVar sk_dmg_sniper_penetrate_plr;
 extern ConVar sk_dmg_sniper_penetrate_npc;
@@ -232,7 +250,13 @@ public:
 	int OnTakeDamage_Alive( const CTakeDamageInfo &info );
 	bool WeaponLOSCondition(const Vector &ownerPos, const Vector &targetPos, bool bSetConditions) {return true;}
 	int IRelationPriority( CBaseEntity *pTarget );
-	bool IsFastSniper() { return HasSpawnFlags(SF_SNIPER_FAST); }
+	bool IsFastSniper()
+	{
+		// On Hard, Hidden Snipers will shoot faster
+		if (!HasSpawnFlags(SF_SNIPER_HIDDEN) && GameRules()->GetSkillLevel() == SKILL_HARD)
+			return true;
+		return HasSpawnFlags(SF_SNIPER_FAST);
+	}
 
 	bool QuerySeeEntity( CBaseEntity *pEntity, bool bOnlyHateOrFearIfNPC = false );
 
@@ -405,6 +429,8 @@ private:
 	string_t					m_iszBeamName;	// Custom beam texture
 	color32						m_BeamColor;	// Custom beam color
 #endif
+
+	CBaseEntity* m_FakeRifle;
 
 	COutputEvent				m_OnShotFired;
 	
@@ -755,15 +781,34 @@ void CProtoSniper::LaserOn( const Vector &vecTarget, const Vector &vecDeviance )
 	
 	// The beam is backwards, sortof. The endpoint is the sniper. This is
 	// so that the beam can be tapered to very thin where it emits from the sniper.
-	m_pBeam->PointsInit( vecInitialAim, GetBulletOrigin() );
-	m_pBeam->SetBrightness( 255 );
-	m_pBeam->SetNoise( 0 );
-	m_pBeam->SetWidth( 1.0f );
-	m_pBeam->SetEndWidth( 0 );
-	m_pBeam->SetScrollRate( 0 );
-	m_pBeam->SetFadeLength( 0 );
-	m_pBeam->SetHaloTexture( sHaloSprite );
-	m_pBeam->SetHaloScale( 4.0f );
+	if (HasSpawnFlags(SF_SNIPER_HIDDEN))
+	{
+		m_pBeam->PointsInit(vecInitialAim, GetBulletOrigin());
+	}
+	else
+	{
+		// Try to make the laser emit from the rifle or the NPC origin
+		if (GetNavigator() != NULL && GetNavigator()->IsGoalActive())
+		{
+			vecInitialAim = vecTarget;
+		}
+		if (m_FakeRifle != NULL)
+		{
+			m_pBeam->PointsInit(vecInitialAim, m_FakeRifle->GetAbsOrigin());
+		}
+		else
+		{
+			m_pBeam->PointsInit(vecInitialAim, GetAbsOrigin());
+		}
+	}
+	m_pBeam->SetBrightness(255);
+	m_pBeam->SetNoise(0);
+	m_pBeam->SetWidth(1.0f);
+	m_pBeam->SetEndWidth(0);
+	m_pBeam->SetScrollRate(0);
+	m_pBeam->SetFadeLength(0);
+	m_pBeam->SetHaloTexture(sHaloSprite);
+	m_pBeam->SetHaloScale(4.0f);
 
 	m_vecPaintStart = vecInitialAim;
 
@@ -1107,6 +1152,54 @@ void CProtoSniper::Spawn( void )
 		AddEffects( EF_NODRAW );
 		AddSolidFlags( FSOLID_NOT_SOLID );
 	}
+	else
+	{
+		m_FakeRifle = CreateEntityByName("prop_dynamic_override");
+		if (m_FakeRifle)
+		{
+			bool shouldUseAimingVariables = false;
+			Vector offset;
+			if (sniperrifle_use_attachment.GetBool())
+			{
+				int attachment = LookupAttachment(sniperrifle_attachment_point.GetString());
+				if (attachment)
+				{
+					offset.Init(sniperrifle_offset_x_attachment.GetFloat(), sniperrifle_offset_y_attachment.GetFloat(), sniperrifle_offset_z_attachment.GetFloat());
+					m_FakeRifle->SetParent(this, attachment);
+					shouldUseAimingVariables = true;
+				}
+				else
+				{
+					Warning("Failed to attach to attachment, attachment doesn't exist.\n");
+					offset.Init(sniperrifle_offset_x.GetFloat(), sniperrifle_offset_y.GetFloat(), sniperrifle_offset_z.GetFloat());
+					m_FakeRifle->SetParent(this);
+				}
+			}
+			else
+			{
+				offset.Init(sniperrifle_offset_x.GetFloat(), sniperrifle_offset_y.GetFloat(), sniperrifle_offset_z.GetFloat());
+				m_FakeRifle->SetParent(this);
+			}
+			m_FakeRifle->SetLocalOrigin(offset);
+			m_FakeRifle->SetModel(sniper_riflemodel.GetString());
+			m_FakeRifle->SetCollisionGroup(COLLISION_GROUP_WEAPON);
+			m_FakeRifle->SetOwnerEntity(this);
+			m_FakeRifle->Spawn();
+			m_FakeRifle->Activate();
+
+			m_bloodColor = BLOOD_COLOR_RED;
+			SetMoveType(MOVETYPE_STEP);
+			CapabilitiesAdd(bits_CAP_ANIMATEDFACE);
+			CapabilitiesAdd(bits_CAP_DOORS_GROUP);
+			CapabilitiesAdd(bits_CAP_FRIENDLY_DMG_IMMUNE);
+			CapabilitiesAdd(bits_CAP_MOVE_GROUND);
+			if (sv_npc_sniper_use_aiming_anims.GetBool())
+			{
+				CapabilitiesAdd(bits_CAP_AIM_GUN);
+			}
+			CapabilitiesAdd(bits_CAP_TURN_HEAD);
+		}
+	}
 
 	// Point the cursor straight ahead so that the sniper's
 	// first sweep of the laser doesn't look weird.
@@ -1420,26 +1513,29 @@ int CProtoSniper::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 	if ( info.GetDamageType() == DMG_GENERIC && info.GetInflictor() == this )
 		return CAI_BaseNPC::OnTakeDamage_Alive( newInfo );
 
-	if( !(info.GetDamageType() & (DMG_BLAST|DMG_BURN) ) )
+	if (HasSpawnFlags(SF_SNIPER_HIDDEN))
 	{
-		// Only blasts and burning hurt
-		return 0;
-	}
+		if (!(info.GetDamageType() & (DMG_BLAST | DMG_BURN)))
+		{
+			// Only blasts and burning hurt
+			return 0;
+		}
 
-	if( (info.GetDamageType() & DMG_BLAST) && info.GetDamage() < m_iHealth )
-	{
-		// Only blasts powerful enough to kill hurt
-		return 0;
-	}
+		if ((info.GetDamageType() & DMG_BLAST) && info.GetDamage() < m_iHealth)
+		{
+			// Only blasts powerful enough to kill hurt
+			return 0;
+		}
 
-	float flDist = GetAbsOrigin().DistTo( info.GetInflictor()->GetAbsOrigin() );
-	if( flDist > SNIPER_MAX_INFLICTOR_DIST )
-	{
-		// Sniper only takes damage from explosives that are nearby. This makes a sniper 
-		// susceptible to a grenade that lands in his nest, but not to a large explosion
-		// that goes off elsewhere and just happens to be able to trace into the sniper's 
-		// nest.
-		return 0;
+		float flDist = GetAbsOrigin().DistTo(info.GetInflictor()->GetAbsOrigin());
+		if (flDist > SNIPER_MAX_INFLICTOR_DIST)
+		{
+			// Sniper only takes damage from explosives that are nearby. This makes a sniper 
+			// susceptible to a grenade that lands in his nest, but not to a large explosion
+			// that goes off elsewhere and just happens to be able to trace into the sniper's 
+			// nest.
+			return 0;
+		}
 	}
 
 	if( info.GetDamageType() & DMG_BURN )
@@ -1504,6 +1600,51 @@ void CProtoSniper::Event_Killed( const CTakeDamageInfo &info )
 		pGib = CreateRagGib( "models/combine_soldier.mdl", GetLocalOrigin(), GetLocalAngles(), (vecForward * flForce) + Vector(0, 0, 600), flFadeTime, bShouldIgnite );
 #endif
 
+	}
+
+	if (!HasSpawnFlags(SF_SNIPER_HIDDEN))
+	{
+		if (m_FakeRifle != NULL)
+		{
+			m_FakeRifle->SetParent(NULL);
+			UTIL_Remove(m_FakeRifle);
+			m_FakeRifle = NULL;
+
+			CBaseEntity* pGunProp = CreateEntityByName("prop_physics");
+			if (pGunProp)
+			{
+				Vector offset;
+				offset.Init(sniperrifle_offset_x.GetFloat(), sniperrifle_offset_y.GetFloat(), sniperrifle_offset_z.GetFloat());
+				pGunProp->SetModel(sniper_riflemodel.GetString());
+				pGunProp->SetAbsOrigin(GetAbsOrigin() + offset);
+				pGunProp->SetAbsAngles(GetAbsAngles());
+				pGunProp->SetCollisionGroup(COLLISION_GROUP_WEAPON);
+				pGunProp->Spawn();
+				pGunProp->Activate();
+
+				variant_t variant;
+				variant.SetFloat(sniperrifle_despawn_t.GetFloat());
+				pGunProp->AcceptInput("KillWhenNotVisible", NULL, NULL, variant, -1);
+
+				IPhysicsObject* pPhys = pGunProp->VPhysicsGetObject();
+
+				if (pPhys)
+				{
+					// Add an extra push in a random direction
+					Vector			vel = RandomVector(-64.0f, 64.0f);
+					AngularImpulse	angImp = RandomAngularImpulse(-300.0f, 300.0f);
+
+					vel[2] = 0.0f;
+					pPhys->AddVelocity(&vel, &angImp);
+				}
+				else
+				{
+					// taken from DropItem code
+					pGunProp->ApplyAbsVelocityImpulse(GetAbsVelocity());
+					pGunProp->ApplyLocalAngularVelocityImpulse(AngularImpulse(0, random->RandomFloat(0, 100), 0));
+				}
+			}
+		}
 	}
 
 	m_OnDeath.FireOutput( info.GetAttacker(), this );
@@ -2056,9 +2197,27 @@ Activity CProtoSniper::NPC_TranslateActivity( Activity eNewActivity )
 {
 	// ACT_IDLE is now just the soldier's unarmed idle animation.
 	// Use a gun-holding animation like what unhidden snipers were using before.
-	if (!HasSpawnFlags( SF_SNIPER_HIDDEN ) && eNewActivity == ACT_IDLE)
+	if (!HasSpawnFlags(SF_SNIPER_HIDDEN))
 	{
-		eNewActivity = ACT_IDLE_SMG1;
+		if (eNewActivity == ACT_IDLE)
+		{
+			eNewActivity = ACT_IDLE_ANGRY_SMG1; // ACT_IDLE_SMG1
+		}
+		else if (eNewActivity == ACT_WALK)
+		{
+			eNewActivity = ACT_WALK_AIM_RIFLE;
+		}
+		else if (eNewActivity == ACT_RUN)
+		{
+			eNewActivity = ACT_RUN_AIM_RIFLE;
+		}
+	}
+	else
+	{
+		if (eNewActivity == ACT_IDLE)
+		{
+			eNewActivity = ACT_IDLE_SMG1;
+		}
 	}
 
 	return BaseClass::NPC_TranslateActivity( eNewActivity );
@@ -2245,6 +2404,12 @@ void CProtoSniper::StartTask( const Task_t *pTask )
 #ifdef _XBOX
 				delay += sniper_xbox_delay.GetFloat();
 #endif
+
+				// Add a delay on easy difficulty
+				if (g_pGameRules->IsSkillLevel(SKILL_EASY) && !HasSpawnFlags(SF_SNIPER_HIDDEN))
+				{
+					delay += sk_npc_sniper_firerate.GetFloat();
+				}
 
 				if( gpGlobals->curtime - m_flTimeLastAttackedPlayer <= SNIPER_FASTER_ATTACK_PERIOD )
 				{
