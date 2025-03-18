@@ -15,6 +15,8 @@ public:
 	void Start(void);
 	void Think(void);
 	void Stop(void);
+	void Spawn(void);
+	void Precache(void);
 
 	Vector m_vecDir;
 	int m_Speed;

@@ -6,10 +6,23 @@
 
 ConVar debug_actual_bullet("debug_actual_bullet", "0", FCVAR_GAMEDLL);
 
+#define BULLET_MODEL "models/weapons/w_bullet.mdl"
+
 LINK_ENTITY_TO_CLASS(actual_bullet, CActualBullet);
 
 BEGIN_DATADESC(CActualBullet)
 END_DATADESC()
+
+void CActualBullet::Precache()
+{
+	PrecacheModel(BULLET_MODEL);
+}
+
+void CActualBullet::Spawn()
+{
+	SetModel(BULLET_MODEL);
+	SetSize(-Vector(1, 1, 1), Vector(1, 1, 1));
+}
 
 void CActualBullet::Start(void)
 {
