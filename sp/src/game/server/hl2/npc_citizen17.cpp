@@ -2605,7 +2605,7 @@ bool CNPC_Citizen::IsCommandable()
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-bool CNPC_Citizen::IsPlayerAlly( CBasePlayer *pPlayer )											
+bool CNPC_Citizen::IsPlayerAlly( CBasePlayer *pPlayer )
 { 
 	if ( Classify() == CLASS_CITIZEN_PASSIVE && GlobalEntity_GetState("gordon_precriminal") == GLOBAL_ON )
 	{
