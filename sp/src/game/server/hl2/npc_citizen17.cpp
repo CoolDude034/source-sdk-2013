@@ -986,6 +986,8 @@ string_t CNPC_Citizen::GetModelName() const
 //-----------------------------------------------------------------------------
 Class_T	CNPC_Citizen::Classify()
 {
+	if (NameMatches("npc_combine_cit_*"))
+		return CLASS_METROPOLICE;
 	if (GlobalEntity_GetState("gordon_precriminal") == GLOBAL_ON)
 		return CLASS_CITIZEN_PASSIVE;
 
