@@ -30,6 +30,7 @@
 #ifdef MAPBASE
 #include "npc_playercompanion.h"
 #endif
+#include "actual_bullet.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -37,6 +38,9 @@
 ConVar sk_weapon_ar2_alt_fire_radius( "sk_weapon_ar2_alt_fire_radius", "10" );
 ConVar sk_weapon_ar2_alt_fire_duration( "sk_weapon_ar2_alt_fire_duration", "2" );
 ConVar sk_weapon_ar2_alt_fire_mass( "sk_weapon_ar2_alt_fire_mass", "150" );
+
+extern ConVar sv_enable_hitscan_weapons;
+extern ConVar sk_bullet_speed;
 
 //=========================================================
 //=========================================================
@@ -444,7 +448,22 @@ void CWeaponAR2::FireNPCPrimaryAttack( CBaseCombatCharacter *pOperator, bool bUs
 
 	CSoundEnt::InsertSound( SOUND_COMBAT|SOUND_CONTEXT_GUNFIRE, pOperator->GetAbsOrigin(), SOUNDENT_VOLUME_MACHINEGUN, 0.2, pOperator, SOUNDENT_CHANNEL_WEAPON, pOperator->GetEnemy() );
 
-	pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2 );
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
+		pOperator->FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2);
+	}
+	else
+	{
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = 1;
+		info.m_vecSrc = vecShootOrigin;
+		info.m_vecDirShooting = vecShootDir;
+		info.m_vecSpread = VECTOR_CONE_PRECALCULATED;
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 
 	// NOTENOTE: This is overriden on the client-side
 	// pOperator->DoMuzzleFlash();

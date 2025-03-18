@@ -18,6 +18,7 @@
 #include "soundent.h"
 #include "vstdlib/random.h"
 #include "gamestats.h"
+#include "actual_bullet.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -28,6 +29,9 @@ extern ConVar sk_plr_num_shotgun_pellets;
 extern ConVar sk_plr_num_shotgun_pellets_double;
 extern ConVar sk_npc_num_shotgun_pellets;
 #endif
+
+extern ConVar sv_enable_hitscan_weapons;
+extern ConVar sk_bullet_speed;
 
 class CWeaponShotgun : public CBaseHLCombatWeapon
 {
@@ -277,11 +281,26 @@ void CWeaponShotgun::FireNPCPrimaryAttack( CBaseCombatCharacter *pOperator, bool
 		vecShootDir = npc->GetActualShootTrajectory( vecShootOrigin );
 	}
 
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
 #ifdef MAPBASE
-	pOperator->FireBullets( sk_npc_num_shotgun_pellets.GetInt(), vecShootOrigin, vecShootDir, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0 );
+		pOperator->FireBullets(sk_npc_num_shotgun_pellets.GetInt(), vecShootOrigin, vecShootDir, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0);
 #else
-	pOperator->FireBullets( 8, vecShootOrigin, vecShootDir, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0 );
+		pOperator->FireBullets(8, vecShootOrigin, vecShootDir, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0);
 #endif
+	}
+	else
+	{
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = sk_npc_num_shotgun_pellets.GetInt();
+		info.m_vecSrc = vecShootOrigin;
+		info.m_vecDirShooting = vecShootDir;
+		info.m_vecSpread = GetBulletSpread();
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -581,7 +600,22 @@ void CWeaponShotgun::PrimaryAttack( void )
 	pPlayer->SetMuzzleFlashTime( gpGlobals->curtime + 1.0 );
 	
 	// Fire the bullets, and force the first shot to be perfectly accuracy
-	pPlayer->FireBullets( sk_plr_num_shotgun_pellets.GetInt(), vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, true, true );
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
+		pPlayer->FireBullets(sk_plr_num_shotgun_pellets.GetInt(), vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, true, true);
+	}
+	else
+	{
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = sk_plr_num_shotgun_pellets.GetInt();
+		info.m_vecSrc = pPlayer->Weapon_ShootPosition();
+		info.m_vecDirShooting = pPlayer->GetAutoaimVector(AUTOAIM_SCALE_DEFAULT);
+		info.m_vecSpread = GetBulletSpread();
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 	
 	pPlayer->ViewPunch( QAngle( random->RandomFloat( -2, -1 ), random->RandomFloat( -2, 2 ), 0 ) );
 
@@ -646,7 +680,22 @@ void CWeaponShotgun::SecondaryAttack( void )
 
 	// Fire the bullets
 #ifdef MAPBASE
-	pPlayer->FireBullets( sk_plr_num_shotgun_pellets_double.GetInt(), vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, false, false );
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
+		pPlayer->FireBullets(sk_plr_num_shotgun_pellets_double.GetInt(), vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, false, false);
+	}
+	else
+	{
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = sk_plr_num_shotgun_pellets_double.GetInt();
+		info.m_vecSrc = pPlayer->Weapon_ShootPosition();
+		info.m_vecDirShooting = pPlayer->GetAutoaimVector(AUTOAIM_SCALE_DEFAULT);
+		info.m_vecSpread = GetBulletSpread();
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 #else
 	pPlayer->FireBullets( 12, vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, false, false );
 #endif

@@ -16,11 +16,14 @@
 #include "soundent.h"
 #include "rumble_shared.h"
 #include "gamestats.h"
+#include "actual_bullet.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
 extern ConVar sk_plr_dmg_smg1_grenade;
+extern ConVar sv_enable_hitscan_weapons;
+extern ConVar sk_bullet_speed;
 
 //-----------------------------------------------------------------------------
 // CWeaponMP5
@@ -204,7 +207,22 @@ void CWeaponMP5::FireNPCPrimaryAttack(CBaseCombatCharacter* pOperator, Vector& v
 	WeaponSoundRealtime(SINGLE_NPC);
 
 	CSoundEnt::InsertSound(SOUND_COMBAT | SOUND_CONTEXT_GUNFIRE, pOperator->GetAbsOrigin(), SOUNDENT_VOLUME_MACHINEGUN, 0.2, pOperator, SOUNDENT_CHANNEL_WEAPON, pOperator->GetEnemy());
-	pOperator->FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2, entindex(), 0);
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
+		pOperator->FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2, entindex(), 0);
+	}
+	else
+	{
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = 1;
+		info.m_vecSrc = vecShootOrigin;
+		info.m_vecDirShooting = vecShootDir;
+		info.m_vecSpread = GetBulletSpread();
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 
 	pOperator->DoMuzzleFlash();
 	m_iClip1--;

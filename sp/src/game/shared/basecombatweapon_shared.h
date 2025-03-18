@@ -394,7 +394,7 @@ public:
 
 	virtual int				GetSkinOverride() const { return -1; }
 
-	virtual bool			HasIronsights(void) { return false; } //default yes; override and return false for weapons with no ironsights (like weapon_crowbar)
+	virtual bool			HasIronsights(void) { return true; } //default yes; override and return false for weapons with no ironsights (like weapon_crowbar)
 	bool					IsIronsighted(void);
 	void					ToggleIronsights(void);
 	void					EnableIronsights(void);

@@ -19,6 +19,7 @@
 #include "engine/IEngineSound.h"
 #include "te_effect_dispatch.h"
 #include "gamestats.h"
+#include "actual_bullet.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -31,6 +32,9 @@
 extern acttable_t *GetPistolActtable();
 extern int GetPistolActtableCount();
 #endif
+
+extern ConVar sv_enable_hitscan_weapons;
+extern ConVar sk_bullet_speed;
 
 class CWeapon357 : public CBaseHLCombatWeapon
 {
@@ -309,7 +313,22 @@ void CWeapon357::FireNPCPrimaryAttack( CBaseCombatCharacter *pOperator, Vector &
 	CSoundEnt::InsertSound( SOUND_COMBAT|SOUND_CONTEXT_GUNFIRE, pOperator->GetAbsOrigin(), SOUNDENT_VOLUME_PISTOL, 0.2, pOperator, SOUNDENT_CHANNEL_WEAPON, pOperator->GetEnemy() );
 
 	WeaponSound( SINGLE_NPC );
-	pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 1 );
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
+		pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 1 );
+	}
+	else
+	{
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = 1;
+		info.m_vecSrc = vecShootOrigin;
+		info.m_vecDirShooting = vecShootDir;
+		info.m_vecSpread = GetBulletSpread();
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 	pOperator->DoMuzzleFlash();
 	m_iClip1 = m_iClip1 - 1;
 }
@@ -375,7 +394,22 @@ void CWeapon357::PrimaryAttack( void )
 	Vector vecSrc		= pPlayer->Weapon_ShootPosition();
 	Vector vecAiming	= pPlayer->GetAutoaimVector( AUTOAIM_SCALE_DEFAULT );	
 
-	pPlayer->FireBullets( 1, vecSrc, vecAiming, vec3_origin, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0 );
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
+		pPlayer->FireBullets(1, vecSrc, vecAiming, vec3_origin, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0);
+	}
+	else
+	{
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = 1;
+		info.m_vecSrc = vecSrc;
+		info.m_vecDirShooting = vecAiming;
+		info.m_vecSpread = GetBulletSpread();
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 
 	pPlayer->SetMuzzleFlashTime( gpGlobals->curtime + 0.5 );
 

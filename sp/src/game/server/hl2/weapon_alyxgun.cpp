@@ -10,9 +10,13 @@
 #include "npcevent.h"
 #include "ai_basenpc.h"
 #include "globalstate.h"
+#include "actual_bullet.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
+
+extern ConVar sv_enable_hitscan_weapons;
+extern ConVar sk_bullet_speed;
 
 IMPLEMENT_SERVERCLASS_ST(CWeaponAlyxGun, DT_WeaponAlyxGun)
 END_SEND_TABLE()
@@ -259,13 +263,28 @@ void CWeaponAlyxGun::FireNPCPrimaryAttack( CBaseCombatCharacter *pOperator, bool
 
 	WeaponSound( SINGLE_NPC );
 
-	if( hl2_episodic.GetBool() )
+	if (sv_enable_hitscan_weapons.GetBool())
 	{
-		pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 1 );
+		if (hl2_episodic.GetBool())
+		{
+			pOperator->FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 1);
+		}
+		else
+		{
+			pOperator->FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2);
+		}
 	}
 	else
 	{
-		pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2 );
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = 1;
+		info.m_vecSrc = vecShootOrigin;
+		info.m_vecDirShooting = vecShootDir;
+		info.m_vecSpread = VECTOR_CONE_PRECALCULATED;
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
 	}
 
 	pOperator->DoMuzzleFlash();

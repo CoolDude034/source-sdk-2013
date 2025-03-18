@@ -34,6 +34,7 @@
 #include "eventqueue.h"
 #include "fmtstr.h"
 #include "gameweaponmanager.h"
+#include "actual_bullet.h"
 
 #ifdef HL2MP
 	#include "hl2mp_gamerules.h"
@@ -94,6 +95,10 @@ void CC_ToggleIronSights(void)
 
 static ConCommand toggle_ironsight("toggle_ironsight", CC_ToggleIronSights);
 #endif
+
+extern ConVar sv_enable_hitscan_weapons;
+
+ConVar sk_bullet_speed("sk_bullet_speed", "12000");
 
 CBaseCombatWeapon::CBaseCombatWeapon()
 {
@@ -2824,7 +2829,23 @@ void CBaseCombatWeapon::PrimaryAttack( void )
 	info.m_vecSpread = GetActiveWeapon()->GetBulletSpread();
 #endif // CLIENT_DLL
 
-	pPlayer->FireBullets( info );
+	// Actual Bullets
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
+		pPlayer->FireBullets(info);
+	}
+	else
+	{
+		FireBulletsInfo_t info;
+		info.m_iAmmoType = m_iPrimaryAmmoType;
+		info.m_iShots = 1;
+		info.m_vecSrc = pPlayer->Weapon_ShootPosition();
+		info.m_vecDirShooting = pPlayer->GetAutoaimVector(AUTOAIM_SCALE_DEFAULT);
+		info.m_vecSpread = GetBulletSpread();
+		info.m_pAttacker = GetOwnerEntity();
+
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 
 	if (!m_iClip1 && pPlayer->GetAmmoCount(m_iPrimaryAmmoType) <= 0)
 	{
