@@ -988,9 +988,10 @@ Class_T	CNPC_Citizen::Classify()
 {
 	if (NameMatches("npc_combine_cit_*"))
 		return CLASS_METROPOLICE;
+	if (NameMatches("npc_rioter_*"))
+		return CLASS_CITIZEN_REBEL;
 	if (GlobalEntity_GetState("gordon_precriminal") == GLOBAL_ON)
 		return CLASS_CITIZEN_PASSIVE;
-
 	if (GlobalEntity_GetState("citizens_passive") == GLOBAL_ON)
 		return CLASS_CITIZEN_PASSIVE;
 
