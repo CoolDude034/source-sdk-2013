@@ -46,6 +46,7 @@ inline void FireActualBullet(FireBulletsInfo_t& info, int iSpeed, const char* tr
 		pBullet->m_Speed = iSpeed;
 		pBullet->SetOwnerEntity(info.m_pAttacker);
 		pBullet->SetAbsOrigin(info.m_vecSrc);
+		pBullet->SetAbsAngles(info.m_pAttacker->EyeAngles());
 		pBullet->info = info;
 		pBullet->Start();
 		UTIL_Tracer(info.m_vecSrc, tr.endpos, info.m_pAttacker->entindex(), -1, (float)iSpeed, false, tracertype, 0);
