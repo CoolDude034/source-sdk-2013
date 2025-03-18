@@ -379,6 +379,39 @@ void CBaseViewModel::SetWeaponModel( const char *modelname, CBaseCombatWeapon *w
 #endif
 }
 
+void CBaseViewModel::CalcIronsights(Vector& pos, QAngle& ang)
+{
+	CBaseCombatWeapon* pWeapon = GetOwningWeapon();
+
+	if (!pWeapon)
+		return;
+
+	//get delta time for interpolation
+	float delta = (gpGlobals->curtime - pWeapon->m_flIronsightedTime) * 2.5f; //modify this value to adjust how fast the interpolation is
+	float exp = (pWeapon->IsIronsighted()) ?
+		(delta > 1.0f) ? 1.0f : delta : //normal blending
+		(delta > 1.0f) ? 0.0f : 1.0f - delta; //reverse interpolation
+
+	if (exp <= 0.001f) //fully not ironsighted; save performance
+		return;
+
+	Vector newPos = pos;
+	QAngle newAng = ang;
+
+	Vector vForward, vRight, vUp, vOffset;
+	AngleVectors(newAng, &vForward, &vRight, &vUp);
+	vOffset = pWeapon->GetIronsightPositionOffset();
+
+	newPos += vForward * vOffset.x;
+	newPos += vRight * vOffset.y;
+	newPos += vUp * vOffset.z;
+	newAng += pWeapon->GetIronsightAngleOffset();
+	//fov is handled by CBaseCombatWeapon
+
+	pos += (newPos - pos) * exp;
+	ang += (newAng - ang) * exp;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Output : CBaseCombatWeapon
@@ -428,86 +461,43 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 	QAngle vmangles = eyeAngles;
 	Vector vmorigin = eyePosition;
 
-	CBaseCombatWeapon *pWeapon = m_hWeapon.Get();
+	CBaseCombatWeapon* pWeapon = m_hWeapon.Get();
 	//Allow weapon lagging
-	if ( pWeapon != NULL )
+	//only if not in ironsight-mode
+	if (pWeapon == NULL || !pWeapon->IsIronsighted())
 	{
-#if defined( CLIENT_DLL )
-		if ( !prediction->InPrediction() )
-#endif
+		if (pWeapon != NULL)
 		{
-			// add weapon-specific bob 
-			pWeapon->AddViewmodelBob( this, vmorigin, vmangles );
-#if defined ( CSTRIKE_DLL )
-			CalcViewModelLag( vmorigin, vmangles, vmangoriginal );
-#endif
-		}
-	}
-	// Add model-specific bob even if no weapon associated (for head bob for off hand models)
-	AddViewModelBob( owner, vmorigin, vmangles );
-
 #if defined( CLIENT_DLL )
-	if ( !prediction->InPrediction() )
-	{
+			if (!prediction->InPrediction())
+#endif
+			{
+				// add weapon-specific bob 
+				pWeapon->AddViewmodelBob(this, vmorigin, vmangles);
+			}
+		}
+
+		// Add model-specific bob even if no weapon associated (for head bob for off hand models)
+		AddViewModelBob(owner, vmorigin, vmangles);
+
 		// Add lag
-		CalcViewModelLag( vmorigin, vmangles, vmangoriginal );
+		CalcViewModelLag(vmorigin, vmangles, vmangoriginal);
 
-		// Let the viewmodel shake at about 10% of the amplitude of the player's view
-		vieweffects->ApplyShake( vmorigin, vmangles, 0.1 );	
-	}
-#endif
-
-	if( UseVR() )
-	{
-		g_ClientVirtualReality.OverrideViewModelTransform( vmorigin, vmangles, pWeapon && pWeapon->ShouldUseLargeViewModelVROverride() );
-	}
-
-#ifdef MAPBASE
-	// Flip the view if we should be flipping
-	if (ShouldFlipViewModel())
-	{
-		Vector vecOriginDiff = (eyePosition - vmorigin);
-		QAngle angAnglesDiff = (eyeAngles - vmangles);
-
-		vmorigin.x = (eyePosition.x + vecOriginDiff.x);
-		vmorigin.y = (eyePosition.y + vecOriginDiff.y);
-		
-		vmangles.y = (eyeAngles.y + angAnglesDiff.y);
-		vmangles.z = (eyeAngles.z + angAnglesDiff.z);
-	}
-#endif
-
-	SetLocalOrigin( vmorigin );
-	SetLocalAngles( vmangles );
-
-#ifdef SIXENSE
-	if( g_pSixenseInput->IsEnabled() && (owner->GetObserverMode()==OBS_MODE_NONE) && !UseVR() )
-	{
-		const float max_gun_pitch = 20.0f;
-
-		float viewmodel_fov_ratio = g_pClientMode->GetViewModelFOV()/owner->GetFOV();
-		QAngle gun_angles = g_pSixenseInput->GetViewAngleOffset() * -viewmodel_fov_ratio;
-
-		// Clamp pitch a bit to minimize seeing back of viewmodel
-		if( gun_angles[PITCH] < -max_gun_pitch )
-		{ 
-			gun_angles[PITCH] = -max_gun_pitch; 
-		}
-
-#ifdef WIN32 // ShouldFlipViewModel comes up unresolved on osx? Mabye because it's defined inline? fixme
-		if( ShouldFlipViewModel() ) 
+#if defined( CLIENT_DLL )
+		if (!prediction->InPrediction())
 		{
-			gun_angles[YAW] *= -1.0f;
+			// Let the viewmodel shake at about 10% of the amplitude of the player's view
+			vieweffects->ApplyShake(vmorigin, vmangles, 0.1);
 		}
 #endif
-
-		vmangles = EyeAngles() +  gun_angles;
-
-		SetLocalAngles( vmangles );
 	}
-#endif
-#endif
 
+	CalcIronsights(vmorigin, vmangles);
+
+	SetLocalOrigin(vmorigin);
+	SetLocalAngles(vmangles);
+
+#endif
 }
 
 //-----------------------------------------------------------------------------

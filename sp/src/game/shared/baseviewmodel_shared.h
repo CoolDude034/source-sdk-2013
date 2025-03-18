@@ -77,6 +77,8 @@ public:
 	void					SetControlPanelsActive( bool bState );
 	void					ShowControlPanells( bool show );
 
+	void					CalcIronsights(Vector& pos, QAngle& ang);
+
 	virtual CBaseCombatWeapon *GetOwningWeapon( void );
 	
 	virtual CBaseEntity	*GetOwnerViaInterface( void ) { return GetOwner(); }

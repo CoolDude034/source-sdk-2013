@@ -73,6 +73,11 @@ public:
 			
 		static Vector cone;
 
+		if (m_bIsIronsighted)
+		{
+			return VECTOR_CONE_1DEGREES;
+		}
+
 		if ( pistol_use_new_accuracy.GetBool() )
 		{
 			float ramp = RemapValClamped(	m_flAccuracyPenalty, 

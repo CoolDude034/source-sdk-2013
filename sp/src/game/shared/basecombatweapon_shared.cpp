@@ -24,6 +24,10 @@
 #include "tf_shareddefs.h"
 #endif
 
+#ifdef CLIENT_DLL  
+#include "c_baseplayer.h"
+#endif
+
 #if !defined( CLIENT_DLL )
 
 // Game DLL Headers
@@ -60,6 +64,38 @@ ConVar tf_weapon_criticals_bucket_bottom( "tf_weapon_criticals_bucket_bottom", "
 ConVar tf_weapon_criticals_bucket_default( "tf_weapon_criticals_bucket_default", "300.0", FCVAR_REPLICATED | FCVAR_CHEAT );
 #endif // TF
 
+#ifdef CLIENT_DLL
+void RecvProxy_ToggleSights(const CRecvProxyData* pData, void* pStruct, void* pOut)
+{
+	CBaseCombatWeapon* pWeapon = (CBaseCombatWeapon*)pStruct;
+	if (pData->m_Value.m_Int)
+		pWeapon->EnableIronsights();
+	else
+		pWeapon->DisableIronsights();
+}
+#endif
+
+#ifdef CLIENT_DLL
+void CC_ToggleIronSights(void)
+{
+	CBasePlayer* pPlayer = C_BasePlayer::GetLocalPlayer();
+	if (pPlayer == NULL)
+		return;
+
+	CBaseCombatWeapon* pWeapon = pPlayer->GetActiveWeapon();
+	if (pWeapon == NULL)
+		return;
+	if (!pWeapon->IsIronsighted())
+		return;
+
+	pWeapon->ToggleIronsights();
+
+	engine->ServerCmd("toggle_ironsight"); //forward to server
+}
+
+static ConCommand toggle_ironsight("toggle_ironsight", CC_ToggleIronSights);
+#endif
+
 CBaseCombatWeapon::CBaseCombatWeapon()
 {
 	// Constructor must call this
@@ -77,6 +113,10 @@ CBaseCombatWeapon::CBaseCombatWeapon()
 	m_nViewModelIndex	= 0;
 
 	m_bFlipViewModel	= false;
+
+	// Setup iron-sight variables
+	m_bIsIronsighted = GetWpnData().bHasIronSights;
+	m_flIronsightedTime = 0.0f;
 
 #if defined( CLIENT_DLL )
 	m_iState = m_iOldState = WEAPON_NOT_CARRIED;
@@ -779,6 +819,8 @@ void CBaseCombatWeapon::Drop( const Vector &vecVelocity )
 	// world.
 	SetRemoveable( true );
 	WeaponManager_AmmoMod( this );
+
+	DisableIronsights();
 
 	//If it was dropped then there's no need to respawn it.
 	AddSpawnFlags( SF_NORESPAWN );
@@ -1716,6 +1758,8 @@ bool CBaseCombatWeapon::DefaultDeploy( char *szViewModel, char *szWeaponModel, i
 
 	SetWeaponVisible( true );
 
+	DisableIronsights();
+
 /*
 
 This code is disabled for now, because moving through the weapons in the carousel 
@@ -1802,6 +1846,8 @@ bool CBaseCombatWeapon::Holster( CBaseCombatWeapon *pSwitchingTo )
 	if (HasSpawnFlags(SF_WEAPON_NO_AUTO_SWITCH_WHEN_EMPTY))
 		RemoveSpawnFlags(SF_WEAPON_NO_AUTO_SWITCH_WHEN_EMPTY);
 #endif
+
+	DisableIronsights();
 
 	return true;
 }
@@ -2461,6 +2507,8 @@ bool CBaseCombatWeapon::DefaultReload( int iClipSize1, int iClipSize2, int iActi
 
 	m_bInReload = true;
 
+	DisableIronsights();
+
 	return true;
 }
 
@@ -2895,6 +2943,95 @@ bool CBaseCombatWeapon::CanBePickedUpByNPCs(void)
 #endif // MAPBASE
 }
 
+// IRON SIGHTS
+Vector CBaseCombatWeapon::GetIronsightPositionOffset(void) const
+{
+	return GetWpnData().vecIronsightPosOffset;
+}
+
+QAngle CBaseCombatWeapon::GetIronsightAngleOffset(void) const
+{
+	return GetWpnData().angIronsightAngOffset;
+}
+
+float CBaseCombatWeapon::GetIronsightFOVOffset(void) const
+{
+	return GetWpnData().flIronsightFOVOffset;
+}
+
+bool CBaseCombatWeapon::IsIronsighted(void)
+{
+	return (m_bIsIronsighted);
+}
+
+void CBaseCombatWeapon::ToggleIronsights(void)
+{
+	if (m_bInReload == true)
+	{
+		DisableIronsights();
+	}
+	else
+	{
+		if (m_bIsIronsighted)
+			DisableIronsights();
+		else
+			EnableIronsights();
+	}
+}
+
+void CBaseCombatWeapon::EnableIronsights(void)
+{
+#ifdef CLIENT_DLL
+	if (!prediction->IsFirstTimePredicted())
+		return;
+#endif
+	if (!HasIronsights() || m_bIsIronsighted)
+		return;
+
+	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
+
+	if (!pOwner)
+		return;
+
+	if (pOwner->SetFOV(this, pOwner->GetDefaultFOV() + GetIronsightFOVOffset(), 0.4f)) //modify the last value to adjust how fast the fov is applied
+	{
+		ConVar* crosshair = cvar->FindVar("crosshair");
+		crosshair->SetValue("0");
+		m_bIsIronsighted = true;
+		SetIronsightTime();
+		pOwner->EmitSound("Weapon.IronSightIn");
+	}
+}
+
+void CBaseCombatWeapon::DisableIronsights(void)
+{
+#ifdef CLIENT_DLL
+	if (gpGlobals->maxClients > 1 && !prediction->IsFirstTimePredicted())
+		return;
+#endif
+	if (!HasIronsights() || !m_bIsIronsighted)
+		return;
+
+	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
+
+	if (!pOwner)
+		return;
+
+	if (pOwner->SetFOV(this, 0, 0.2f)) //modify the last value to adjust how fast the fov is applied
+	{
+		ConVar* crosshair = cvar->FindVar("crosshair");
+		crosshair->SetValue("1");
+		m_bIsIronsighted = false;
+		SetIronsightTime();
+		pOwner->EmitSound("Weapon.IronSightOut");
+	}
+}
+
+void CBaseCombatWeapon::SetIronsightTime(void)
+{
+	m_flIronsightedTime = gpGlobals->curtime;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose:
 // Input  :
@@ -3035,6 +3172,9 @@ BEGIN_PREDICTION_DATA( CBaseCombatWeapon )
 
 	DEFINE_PRED_FIELD( m_nViewModelIndex, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 
+	DEFINE_PRED_FIELD(m_bIsIronsighted, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE),
+	DEFINE_PRED_FIELD(m_flIronsightedTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE),
+
 	// Not networked
 
 	DEFINE_PRED_FIELD( m_flTimeWeaponIdle, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -3055,6 +3195,8 @@ BEGIN_PREDICTION_DATA( CBaseCombatWeapon )
 	DEFINE_FIELD( m_bRemoveable, FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_iPrimaryAmmoCount, FIELD_INTEGER ),
 	DEFINE_FIELD( m_iSecondaryAmmoCount, FIELD_INTEGER ),
+	DEFINE_FIELD(m_bIsIronsighted, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flIronsightedTime, FIELD_FLOAT),
 
 	//DEFINE_PHYSPTR( m_pConstraint ),
 
@@ -3432,6 +3574,9 @@ BEGIN_NETWORK_TABLE(CBaseCombatWeapon, DT_BaseCombatWeapon)
 	SendPropInt( SENDINFO(m_spawnflags), 8, SPROP_UNSIGNED ),
 #endif
 
+	SendPropBool(SENDINFO(m_bIsIronsighted)),
+	SendPropFloat(SENDINFO(m_flIronsightedTime)),
+
 #else
 	RecvPropDataTable("LocalWeaponData", 0, 0, &REFERENCE_RECV_TABLE(DT_LocalWeaponData)),
 	RecvPropDataTable("LocalActiveWeaponData", 0, 0, &REFERENCE_RECV_TABLE(DT_LocalActiveWeaponData)),
@@ -3446,6 +3591,9 @@ BEGIN_NETWORK_TABLE(CBaseCombatWeapon, DT_BaseCombatWeapon)
 #ifdef MAPBASE
 	RecvPropInt( RECVINFO( m_spawnflags ) ),
 #endif
+
+	RecvPropInt(RECVINFO(m_bIsIronsighted), 0, RecvProxy_ToggleSights), //note: RecvPropBool is actually RecvPropInt (see its implementation), but we need a proxy
+	RecvPropFloat(RECVINFO(m_flIronsightedTime)),
 
 #endif
 END_NETWORK_TABLE()

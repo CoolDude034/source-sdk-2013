@@ -21,9 +21,6 @@
 #include "tier0/memdbgon.h"
 
 extern ConVar sk_plr_dmg_smg1_grenade;
-extern ConVar sk_plr_dmg_mp5;
-extern ConVar sk_npc_dmg_mp5;
-extern ConVar sk_max_mp5;
 
 //-----------------------------------------------------------------------------
 // CWeaponMP5
@@ -58,6 +55,7 @@ public:
 	virtual const Vector& GetBulletSpread()
 	{
 		// Define "spread" parameters based on the "owner" and what they are doing
+		static Vector aimingCone = VECTOR_CONE_1DEGREES;
 		static Vector plrDuckCone = VECTOR_CONE_2DEGREES;
 		static Vector plrStandCone = VECTOR_CONE_3DEGREES;
 		static Vector plrMoveCone = VECTOR_CONE_4DEGREES;
@@ -68,7 +66,10 @@ public:
 		if (GetOwner() && GetOwner()->IsNPC())
 			return npcCone;
 
-		//static Vector cone;
+		if (m_bIsIronsighted)
+		{
+			return aimingCone;
+		}
 
 		// We must know the player "owns" the weapon before different cones may be used
 		CBasePlayer* pPlayer = ToBasePlayer(GetOwnerEntity());
