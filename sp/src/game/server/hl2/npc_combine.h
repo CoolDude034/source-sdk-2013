@@ -79,6 +79,9 @@ public:
 	virtual bool	IsCrouchedActivity( Activity activity );
 #endif
 
+	// WORLDTWEAKS
+	bool		m_bIsShield;
+
 	void Event_Killed( const CTakeDamageInfo &info );
 
 
@@ -116,6 +119,8 @@ public:
 	bool			IsAltFireCapable();
 	bool			IsGrenadeCapable();
 	const char*		GetGrenadeAttachment() { return "lefthand"; }
+
+	bool			IsShield() { return m_bIsShield; }
 #else
 #endif
 #ifndef MAPBASE // CAI_GrenadeUser

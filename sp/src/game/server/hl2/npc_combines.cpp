@@ -43,6 +43,15 @@ extern ConVar sk_plr_num_shotgun_pellets;
 //Whether or not the combine should spawn health on death
 ConVar	combine_spawn_health( "combine_spawn_health", "1" );
 
+ConVar sk_shield_model("sk_shield_model", "models/shield.mdl");
+ConVar sk_shield_offset_x("sk_shield_offset_x", "10.5");
+ConVar sk_shield_offset_y("sk_shield_offset_y", "0");
+ConVar sk_shield_offset_z("sk_shield_offset_z", "40.9");
+ConVar sk_shield_despawn_t("sk_shield_despawn_t", "5");
+ConVar sk_shield_attached_to_attachment("sk_shield_attached_to_attachment", "0"); // Do not set to 1
+ConVar sk_shield_attachment_point("sk_shield_attachment_point", "lefthand");
+ConVar sk_shield_destroy_shield_instead_of_drop("sk_shield_destroy_shield_instead_of_drop", "0");
+
 LINK_ENTITY_TO_CLASS( npc_combine_s, CNPC_CombineS );
 
 
@@ -71,6 +80,43 @@ void CNPC_CombineS::Spawn( void )
 		SetHealth( sk_combine_s_health.GetFloat() );
 		SetMaxHealth( sk_combine_s_health.GetFloat() );
 		SetKickDamage( sk_combine_s_kick.GetFloat() );
+	}
+
+	if (IsShield())
+	{
+		// Spawn a dynamic prop as the shield object, this is better approach when dealing with shield units
+		pShield = CreateEntityByName("prop_dynamic_override");
+		if (pShield)
+		{
+			Vector offset;
+			offset.Init(sk_shield_offset_x.GetFloat(), sk_shield_offset_y.GetFloat(), sk_shield_offset_z.GetFloat());
+			if (sk_shield_attached_to_attachment.GetBool())
+			{
+				// If we have a attachment, attach it to that.
+				int attachment = LookupAttachment(sk_shield_attachment_point.GetString());
+				if (attachment)
+				{
+					pShield->SetParent(this, attachment);
+				}
+				else
+				{
+					Warning("Failed to attach to attachment\n");
+					pShield->SetParent(this);
+				}
+			}
+			else
+			{
+				pShield->SetParent(this);
+			}
+			pShield->SetAbsAngles(GetAbsAngles());
+			pShield->SetLocalOrigin(offset);
+			pShield->SetModel(sk_shield_model.GetString());
+			pShield->SetCollisionGroup(COLLISION_GROUP_DEBRIS);
+			pShield->SetSolid(SOLID_VPHYSICS);
+			pShield->SetOwnerEntity(this);
+			pShield->Spawn();
+			pShield->Activate();
+		}
 	}
 
 	CapabilitiesAdd( bits_CAP_ANIMATEDFACE );
@@ -298,6 +344,54 @@ void CNPC_CombineS::Event_Killed( const CTakeDamageInfo &info )
 	{
 		BaseClass::Event_Killed( info );
 		return;
+	}
+
+	if (pShield != NULL)
+	{
+		pShield->SetParent(NULL);
+		UTIL_Remove(pShield);
+
+		pShield = NULL;
+
+		if (!sk_shield_destroy_shield_instead_of_drop.GetBool())
+		{
+			// Create a fake prop version
+			CBaseEntity* pFakeShieldProp = CreateEntityByName("prop_physics");
+			if (pFakeShieldProp)
+			{
+				Vector offset;
+				offset.Init(sk_shield_offset_x.GetFloat(), sk_shield_offset_y.GetFloat(), sk_shield_offset_z.GetFloat());
+				pFakeShieldProp->SetAbsOrigin(GetAbsOrigin() + offset);
+				pFakeShieldProp->SetAbsAngles(GetAbsAngles());
+				pFakeShieldProp->SetModel(sk_shield_model.GetString());
+				pFakeShieldProp->SetCollisionGroup(COLLISION_GROUP_DEBRIS);
+				pFakeShieldProp->SetName(AllocPooledString("npc_shield_debris"));
+				pFakeShieldProp->Spawn();
+				pFakeShieldProp->Activate();
+
+				variant_t variant;
+				variant.SetFloat(sk_shield_despawn_t.GetFloat());
+				pFakeShieldProp->AcceptInput("KillWhenNotVisible", NULL, NULL, variant, -1);
+
+				IPhysicsObject* pPhys = pFakeShieldProp->VPhysicsGetObject();
+
+				if (pPhys)
+				{
+					// Add an extra push in a random direction
+					Vector			vel = RandomVector(-64.0f, 64.0f);
+					AngularImpulse	angImp = RandomAngularImpulse(-300.0f, 300.0f);
+
+					vel[2] = 0.0f;
+					pPhys->AddVelocity(&vel, &angImp);
+				}
+				else
+				{
+					// taken from DropItem code
+					pFakeShieldProp->ApplyAbsVelocityImpulse(GetAbsVelocity());
+					pFakeShieldProp->ApplyLocalAngularVelocityImpulse(AngularImpulse(0, random->RandomFloat(0, 100), 0));
+				}
+			}
+		}
 	}
 
 	CBasePlayer *pPlayer = ToBasePlayer( info.GetAttacker() );

@@ -244,6 +244,7 @@ DEFINE_FIELD( m_vecAltFireTarget, FIELD_VECTOR ),
 
 DEFINE_KEYFIELD( m_iTacticalVariant, FIELD_INTEGER, "tacticalvariant" ),
 DEFINE_KEYFIELD( m_iPathfindingVariant, FIELD_INTEGER, "pathfindingvariant" ),
+DEFINE_KEYFIELD(m_bIsShield, FIELD_BOOLEAN, "IsShield"),
 
 END_DATADESC()
 
@@ -476,6 +477,26 @@ void CNPC_Combine::Spawn( void )
 	CapabilitiesAdd( bits_CAP_DUCK );				// In reloading and cover
 
 	CapabilitiesAdd( bits_CAP_NO_HIT_SQUADMATES );
+	CapabilitiesAdd(bits_CAP_FRIENDLY_DMG_IMMUNE); // Prevent friendly fire from allies
+
+	if (IsElite())
+	{
+		m_iTacticalVariant = TACTICAL_VARIANT_PRESSURE_ENEMY;
+		m_spawnEquipment = AllocPooledString("weapon_ar2");
+	}
+	else if (IsShield())
+	{
+		CapabilitiesRemove(bits_CAP_DUCK);
+		CapabilitiesRemove(bits_CAP_INNATE_MELEE_ATTACK1);
+		m_iTacticalVariant = TACTICAL_VARIANT_DEFAULT;
+		m_spawnEquipment = AllocPooledString("weapon_pistol");
+	}
+
+	// 25% chance to equip the MP5
+	if (m_spawnEquipment == gm_isz_class_SMG1 && random->RandomFloat() < 0.25F)
+	{
+		m_spawnEquipment = AllocPooledString("weapon_mp5");
+	}
 
 	m_bFirstEncounter	= true;// this is true when the grunt spawns, because he hasn't encountered an enemy yet.
 
@@ -1876,7 +1897,7 @@ int CNPC_Combine::SelectCombatSchedule()
 				}
 
 				// First contact, and I'm solo, or not the squad leader.
-				if( HasCondition( COND_SEE_ENEMY ) && CanGrenadeEnemy() )
+				if( HasCondition( COND_SEE_ENEMY ) && CanGrenadeEnemy() && !IsShield() )
 				{
 					if( OccupyStrategySlot( SQUAD_SLOT_GRENADE1 ) )
 					{
@@ -1896,6 +1917,9 @@ int CNPC_Combine::SelectCombatSchedule()
 					}
 				}
 
+				// If we have a shield, do a range attack
+				if (IsShield())
+					return SCHED_RANGE_ATTACK1;
 				return SCHED_TAKE_COVER_FROM_ENEMY;
 			}
 		}
@@ -2259,7 +2283,7 @@ int CNPC_Combine::SelectFailSchedule( int failedSchedule, int failedTask, AI_Tas
 //-----------------------------------------------------------------------------
 bool CNPC_Combine::ShouldChargePlayer()
 {
-	return GetEnemy() && GetEnemy()->IsPlayer() && PlayerHasMegaPhysCannon() && !IsLimitingHintGroups();
+	return GetEnemy() && GetEnemy()->IsPlayer() && PlayerHasMegaPhysCannon() && !IsLimitingHintGroups() && !IsShield();
 }
 
 
@@ -3478,6 +3502,9 @@ bool CNPC_Combine::CanAltFireEnemy( bool bUseFreeKnowledge )
 #endif
 		return false;
 
+	if (IsShield())
+		return false;
+
 	if (IsCrouching())
 		return false;
 
@@ -3571,6 +3598,9 @@ bool CNPC_Combine::CanGrenadeEnemy( bool bUseFreeKnowledge )
 #else
 	if ( IsElite() )
 #endif
+		return false;
+
+	if (IsShield())
 		return false;
 
 	CBaseEntity *pEnemy = GetEnemy();
