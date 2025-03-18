@@ -72,13 +72,17 @@ int ACT_COMBINE_CAMERA_FIRE;
 const float CAMERA_CLICK_INTERVAL = 0.5f;
 const float CAMERA_MOVE_INTERVAL = 1.0f;
 
+// Convars for easy fine-tuning
+ConVar sv_ai_camera_fov_wide("sv_ai_camera_fov_wide", "0.5");
+ConVar sv_ai_camera_fov_narrow("sv_ai_camera_fov_narrow", "0.707");
+
 
 //
 // The camera has two FOVs - a wide one for becoming slightly aware of someone,
 // a narrow one for becoming totally aware of them.
 //
-const float CAMERA_FOV_WIDE = 0.5;
-const float CAMERA_FOV_NARROW = 0.707;
+const float CAMERA_FOV_WIDE = sv_ai_camera_fov_wide.GetFloat();
+const float CAMERA_FOV_NARROW = sv_ai_camera_fov_narrow.GetFloat();
 
 
 // Camera states
