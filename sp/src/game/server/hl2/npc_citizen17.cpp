@@ -455,7 +455,6 @@ bool CNPC_Citizen::CreateBehaviors()
 #else // Moved to CNPC_PlayerCompanion
 	AddBehavior( &m_FuncTankBehavior );
 #endif
-	AddBehavior(&m_SurrenderBehavior);
 	
 	return true;
 }
@@ -632,10 +631,10 @@ void CNPC_Citizen::Spawn()
 
 	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
 	{
-		AddEFlags(EFL_NO_DISSOLVE | EFL_NO_PHYSCANNON_INTERACTION);
+		AddEFlags(EFL_NO_DISSOLVE);
 		m_bDontPickupWeapons = true;
 
-		if (m_spawnEquipment == NULL_STRING)
+		if (m_spawnEquipment == NULL_STRING || m_spawnEquipment == gm_isz_class_Pistol)
 		{
 			if (random->RandomFloat() < 0.25F)
 			{
@@ -645,11 +644,6 @@ void CNPC_Citizen::Spawn()
 			{
 				m_spawnEquipment = AllocPooledString("weapon_pistol");
 			}
-		}
-
-		if (gpGlobals->mapname == d3_c17_05)
-		{
-			CapabilitiesRemove(bits_CAP_MOVE_GROUND);
 		}
 	}
 	else
@@ -1030,16 +1024,7 @@ string_t CNPC_Citizen::GetModelName() const
 Class_T	CNPC_Citizen::Classify()
 {
 	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
-		if (IsSurrendered())
-		{
-			if (GetActiveWeapon() != NULL)
-			{
-				m_SurrenderBehavior.StopSurrendering();
-				return CLASS_METROPOLICE;
-			}
-			return CLASS_NONE;
-		}
-		return CLASS_METROPOLICE;
+		return CLASS_COMBINE; //CLASS_METROPOLICE
 	if (NameMatches("npc_rioter_*"))
 		return CLASS_CITIZEN_REBEL;
 	if (GlobalEntity_GetState("gordon_precriminal") == GLOBAL_ON)
@@ -1443,9 +1428,6 @@ int CNPC_Citizen::SelectSchedule()
 //-----------------------------------------------------------------------------
 int CNPC_Citizen::SelectSchedulePriorityAction()
 {
-	if (IsSurrendered() && (!m_SurrenderBehavior.ShouldBeStanding() || m_SurrenderBehavior.IsInterruptable()))
-		return SCHED_NONE;
-
 	int schedule = SelectScheduleHeal();
 	if ( schedule != SCHED_NONE )
 		return schedule;
@@ -1735,27 +1717,6 @@ int CNPC_Citizen::TranslateSchedule( int scheduleType )
 	case SCHED_CHASE_ENEMY:
 		if( !IsMortar( GetEnemy() ) && HaveCommandGoal() )
 		{
-			return SCHED_STANDOFF;
-		}
-
-		// Don't chase enemies if you're weaponless!
-		if (GetActiveWeapon() == NULL)
-		{
-			if (m_SurrenderBehavior.SurrenderAutomatically() &&
-				GetEnemy() && (GetEnemy()->GetAbsOrigin() - GetAbsOrigin()).LengthSqr() < Square(npc_citizen_surrender_auto_distance.GetFloat()))
-			{
-				CBaseCombatCharacter* pBCC = GetEnemy()->MyCombatCharacterPointer();
-				if (pBCC && pBCC->FInViewCone(this) && (pBCC->IsPlayer() || (pBCC->IsNPC() && pBCC->MyNPCPointer()->IsPlayerAlly())))
-				{
-					// Surrender automatically if we're allowed to
-					if (m_SurrenderBehavior.CanSelectSchedule())
-					{
-						Msg("Surrendering automatically!\n");
-						return SCHED_STANDOFF;
-					}
-				}
-			}
-
 			return SCHED_STANDOFF;
 		}
 		break;
@@ -2401,29 +2362,6 @@ void CNPC_Citizen::SimpleUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE
 			// If I'm denying commander mode because a level designer has made that decision,
 			// then fire this output in case they've hooked it to an event.
 			m_OnDenyCommanderUse.FireOutput( this, this );
-		}
-	}
-
-	if (IsSurrendered() && m_SurrenderBehavior.IsSurrenderIdle())
-	{
-		if (m_SurrenderBehavior.ShouldBeStanding())
-		{
-			// Check if the player is asking for health
-			if (CanHeal() && ShouldHealTarget(pActivator, true))
-			{
-				Msg("Setting heal request\n");
-				SetCondition(COND_CIT_PLAYERHEALREQUEST);
-			}
-			else
-			{
-				Msg("Surrendering to ground\n");
-				m_SurrenderBehavior.SurrenderToGround();
-			}
-		}
-		else
-		{
-			Msg("Surrendering to standing\n");
-			m_SurrenderBehavior.SurrenderStand();
 		}
 	}
 
@@ -3952,17 +3890,6 @@ bool CNPC_Citizen::HandleInteraction(int interactionType, void *data, CBaseComba
 		}
 		return true;
 	}
-	// Handle Surrender
-	else if (interactionType == g_interactionHandleSurrender && m_SurrenderBehavior.CanSurrender() && GetHealth() < GetMaxHealth())
-	{
-		m_SurrenderBehavior.Surrender(sourceEnt);
-
-		if (sourceEnt)
-		{
-			AddLookTarget(sourceEnt, 1.0f, 3.0f, 1.0f);
-		}
-		return true;
-	}
 
 	return BaseClass::HandleInteraction( interactionType, data, sourceEnt );
 }
@@ -4198,115 +4125,6 @@ bool CNPC_Citizen::ShouldHealTossTarget( CBaseEntity *pTarget, bool bActiveUse )
 	return false;
 }
 #endif
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CNPC_Citizen::CCitizenSurrenderBehavior::Surrender(CBaseCombatCharacter* pCaptor)
-{
-	BaseClass::Surrender(pCaptor);
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-int CNPC_Citizen::CCitizenSurrenderBehavior::SelectSchedule()
-{
-	int schedule = SCHED_NONE;
-	if (IsSurrenderIdleStanding() || IsSurrenderMovingToIdle())
-	{
-		//if (HasCondition( COND_CIT_PLAYERHEALREQUEST ))
-		{
-			// Heal if needed
-			schedule = GetOuterCit()->SelectScheduleHeal();
-			if (schedule != SCHED_NONE)
-				return schedule;
-		}
-
-		if (GetOuterCit()->NameMatches("npc_combine_cit_*") || GetOuterCit()->m_Type == CT_COMBINE)
-		{
-			// Look for a weapon immediately
-			schedule = GetOuterCit()->SelectScheduleRetrieveItem();
-			if (schedule != SCHED_NONE)
-				return schedule;
-		}
-
-		schedule = GetOuterCit()->SelectSchedulePlayerPush();
-		if (schedule != SCHED_NONE)
-			return schedule;
-	}
-
-	return BaseClass::SelectSchedule();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CNPC_Citizen::CCitizenSurrenderBehavior::BuildScheduleTestBits()
-{
-	BaseClass::BuildScheduleTestBits();
-
-	if (IsSurrenderIdleStanding())
-	{
-		GetOuter()->SetCustomInterruptCondition(COND_CIT_PLAYERHEALREQUEST);
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : *pTask - 
-//-----------------------------------------------------------------------------
-void CNPC_Citizen::CCitizenSurrenderBehavior::RunTask(const Task_t* pTask)
-{
-	switch (pTask->iTask)
-	{
-	case TASK_SURRENDER_IDLE_LOOP:
-		if (NextSurrenderIdleCheck() < gpGlobals->curtime)
-		{
-			if (IsSurrenderIdleStanding())
-			{
-				// Check if there's anyone in our squad nearby who should be healed
-				// (bit of a hack, but there's no other way to interrupt the schedule)
-				if (GetOuter()->IsInSquad())
-				{
-					CBaseEntity* pEntity = NULL;
-					float distClosestSq = Square(128.0f);
-					float distCurSq;
-
-					AISquadIter_t iter;
-					CAI_BaseNPC* pSquadmate = GetOuter()->GetSquad()->GetFirstMember(&iter);
-					while (pSquadmate)
-					{
-						if (pSquadmate != GetOuter())
-						{
-							distCurSq = (GetAbsOrigin() - pSquadmate->GetAbsOrigin()).LengthSqr();
-							if (distCurSq < distClosestSq && GetOuterCit()->ShouldHealTarget(pSquadmate))
-							{
-								distClosestSq = distCurSq;
-								pEntity = pSquadmate;
-							}
-						}
-
-						pSquadmate = GetOuter()->GetSquad()->GetNextMember(&iter);
-					}
-
-					if (pEntity)
-					{
-						// Assume the heal schedule will be selected
-						TaskComplete();
-					}
-				}
-			}
-
-			BaseClass::RunTask(pTask);
-		}
-		break;
-
-	default:
-		BaseClass::RunTask(pTask);
-		break;
-	}
-}
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -4660,18 +4478,6 @@ bool CNPC_Citizen::UseSemaphore( void )
 		return false;
 
 	return BaseClass::UseSemaphore();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-int CNPC_Citizen::CCitizenSurrenderBehavior::ModifyResistanceValue(int iVal)
-{
-	iVal = BaseClass::ModifyResistanceValue(iVal);
-
-	iVal += GetOuterCit()->m_iWillpowerModifier;
-
-	return iVal;
 }
 
 //-----------------------------------------------------------------------------
