@@ -15,6 +15,7 @@
 #include "ai_behavior_rappel.h"
 #include "ai_behavior_police.h"
 #endif
+#include "ai_behavior_surrender.h"
 
 struct SquadCandidate_t;
 
@@ -51,7 +52,8 @@ enum CitizenType_t
 	CT_DOWNTRODDEN,
 	CT_REFUGEE,
 	CT_REBEL,
-	CT_UNIQUE
+	CT_UNIQUE,
+	CT_COMBINE
 };
 
 //-----------------------------------------------------------------------------
@@ -148,6 +150,14 @@ public:
 	int				DrawDebugTextOverlays( void );
 
 	virtual const char *SelectRandomExpressionForState( NPC_STATE state );
+
+	bool			m_bCanSurrender;
+	inline bool		IsSurrendered() { return m_SurrenderBehavior.IsSurrendered(); }
+	inline bool		IsSurrenderIdle() { return m_SurrenderBehavior.IsSurrenderIdle(); }
+	inline bool		CanSurrender() { return m_bCanSurrender && m_SurrenderBehavior.CanSurrender(); }
+	inline bool		SurrenderAutomatically() { return m_SurrenderBehavior.SurrenderAutomatically(); }
+
+	Disposition_t	IRelationType(CBaseEntity* pTarget);
 
 	//---------------------------------
 	// Combat
@@ -292,6 +302,7 @@ private:
 		COND_CIT_COMMANDHEAL,
 		COND_CIT_HURTBYFIRE,
 		COND_CIT_START_INSPECTION,
+		COND_CIT_DISARMED,
 		
 		SCHED_CITIZEN_PLAY_INSPECT_ACTIVITY = BaseClass::NEXT_SCHEDULE,
 		SCHED_CITIZEN_HEAL,
@@ -303,6 +314,8 @@ private:
 #ifdef HL2_EPISODIC
 		SCHED_CITIZEN_HEAL_TOSS,
 #endif
+		SCHED_CITIZEN_BURNING_STAND,
+		SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE,
 		
 		TASK_CIT_HEAL = BaseClass::NEXT_TASK,
 		TASK_CIT_RPG_AUGER,
@@ -380,6 +393,28 @@ private:
 #else // Moved to CNPC_PlayerCompanion
 	CAI_FuncTankBehavior	m_FuncTankBehavior;
 #endif
+
+	class CCitizenSurrenderBehavior : public CAI_SurrenderBehavior
+	{
+		typedef CAI_SurrenderBehavior BaseClass;
+
+	public:
+		virtual void Surrender(CBaseCombatCharacter* pCaptor);
+
+		virtual int SelectSchedule();
+
+		virtual void BuildScheduleTestBits();
+
+		virtual void RunTask(const Task_t* pTask);
+
+		virtual int ModifyResistanceValue(int iVal);
+
+		inline CNPC_Citizen* GetOuterCit() { return static_cast<CNPC_Citizen*>(GetOuter()); }
+	};
+
+	virtual CAI_SurrenderBehavior& GetSurrenderBehavior(void) { return m_SurrenderBehavior; }
+
+	CCitizenSurrenderBehavior	m_SurrenderBehavior;
 
 	CHandle<CAI_FollowGoal>	m_hSavedFollowGoalEnt;
 
