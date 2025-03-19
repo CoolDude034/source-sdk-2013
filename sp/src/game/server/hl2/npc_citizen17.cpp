@@ -4663,6 +4663,18 @@ bool CNPC_Citizen::UseSemaphore( void )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+int CNPC_Citizen::CCitizenSurrenderBehavior::ModifyResistanceValue(int iVal)
+{
+	iVal = BaseClass::ModifyResistanceValue(iVal);
+
+	iVal += GetOuterCit()->m_iWillpowerModifier;
+
+	return iVal;
+}
+
+//-----------------------------------------------------------------------------
 //
 // Schedules
 //
