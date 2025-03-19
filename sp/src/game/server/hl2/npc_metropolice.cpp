@@ -129,6 +129,7 @@ ConVar	metropolice_new_component_behavior("metropolice_new_component_behavior", 
 #endif
 
 static string_t metropolice_elite_model = AllocPooledString("models/elite_police.mdl");
+static string_t d1_trainstation_02 = AllocPooledString("d1_trainstation_02");
 
 // How many clips of pistol ammo a metropolice carries.
 #define METROPOLICE_NUM_CLIPS			5
@@ -746,15 +747,24 @@ void CNPC_MetroPolice::Spawn( void )
 
 	m_iPistolClips = METROPOLICE_NUM_CLIPS;
 
+	// TODO: Can this be centralized?
+	// Eh whatever doesn't matter, who even would see this
 	if (m_spawnEquipment == NULL_STRING || m_spawnEquipment == gm_isz_class_Pistol)
 	{
 		if (random->RandomFloat() < 0.25F)
 		{
 			m_spawnEquipment = AllocPooledString("weapon_glock18");
 		}
-		else
+		else if (GetModelName() == metropolice_elite_model && random->RandomFloat() < 0.25F)
 		{
-			m_spawnEquipment = AllocPooledString("weapon_pistol");
+			m_spawnEquipment = gm_isz_class_357;
+		}
+	}
+	else if (m_spawnEquipment == gm_isz_class_SMG1)
+	{
+		if (random->RandomFloat() < 0.25F)
+		{
+			m_spawnEquipment = AllocPooledString("weapon_mp5");
 		}
 	}
 
@@ -776,7 +786,7 @@ void CNPC_MetroPolice::Spawn( void )
 		pWeapon = GetActiveWeapon();
 
 #ifdef MAPBASE
-		if (!EntIsClass(pWeapon, gm_isz_class_Pistol) && !EntIsClass(pWeapon, gm_isz_class_357))
+		if (!EntIsClass(pWeapon, gm_isz_class_Pistol) && !EntIsClass(pWeapon, gm_isz_class_357) && !FClassnameIs(pWeapon, "weapon_glock18"))
 #else
 		if( !FClassnameIs( pWeapon, "weapon_pistol" ) )
 #endif
@@ -1563,7 +1573,7 @@ void CNPC_MetroPolice::OnUpdateShotRegulator( )
 	// FIXME: This code (except the burst interval) could be used for all weapon types 
 #ifdef MAPBASE
 	// Only if we actually have the pistol out
-	if ( GetActiveWeapon() && EntIsClass( GetActiveWeapon(), gm_isz_class_Pistol ) )
+	if ( GetActiveWeapon() && EntIsClass( GetActiveWeapon(), gm_isz_class_Pistol ) || GetActiveWeapon() && EntIsClass(GetActiveWeapon(), gm_isz_class_357) || GetActiveWeapon() && FClassnameIs(GetActiveWeapon(), "weapon_glock18"))
 #else
 	if( Weapon_OwnsThisType( "weapon_pistol" ) )
 #endif
@@ -5226,7 +5236,7 @@ int CNPC_MetroPolice::TranslateSchedule( int scheduleType )
 		if ( m_NextChargeTimer.Expired() && metropolice_charge.GetBool() )
 		{	
 #ifdef MAPBASE
-			if (GetActiveWeapon() && EntIsClass(GetActiveWeapon(), gm_isz_class_Pistol))
+			if (GetActiveWeapon() && EntIsClass(GetActiveWeapon(), gm_isz_class_Pistol) || GetActiveWeapon() && EntIsClass(GetActiveWeapon(), gm_isz_class_357) || GetActiveWeapon() && FClassnameIs(GetActiveWeapon(), "weapon_glock18") || gpGlobals->mapname == d1_trainstation_02)
 #else
 			if ( Weapon_OwnsThisType( "weapon_pistol" ) )
 #endif
@@ -5938,7 +5948,7 @@ void CNPC_MetroPolice::BuildScheduleTestBits( void )
 WeaponProficiency_t CNPC_MetroPolice::CalcWeaponProficiency( CBaseCombatWeapon *pWeapon )
 {
 #ifdef MAPBASE
-	if (EntIsClass(pWeapon, gm_isz_class_Pistol))
+	if (EntIsClass(pWeapon, gm_isz_class_Pistol) || FClassnameIs(pWeapon, "weapon_glock18"))
 #else
 	if( FClassnameIs( pWeapon, "weapon_pistol" ) )
 #endif
@@ -5947,7 +5957,7 @@ WeaponProficiency_t CNPC_MetroPolice::CalcWeaponProficiency( CBaseCombatWeapon *
 	}
 
 #ifdef MAPBASE
-	if (EntIsClass(pWeapon, gm_isz_class_SMG1))
+	if (EntIsClass(pWeapon, gm_isz_class_SMG1) || FClassnameIs(pWeapon, "weapon_mp5"))
 #else
 	if( FClassnameIs( pWeapon, "weapon_smg1" ) )
 #endif

@@ -642,7 +642,7 @@ void CNPC_Citizen::Spawn()
 			}
 			else
 			{
-				m_spawnEquipment = AllocPooledString("weapon_pistol");
+				m_spawnEquipment = gm_isz_class_Pistol;
 			}
 		}
 	}
