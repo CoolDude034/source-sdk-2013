@@ -489,13 +489,29 @@ void CNPC_Combine::Spawn( void )
 		CapabilitiesRemove(bits_CAP_DUCK);
 		CapabilitiesRemove(bits_CAP_INNATE_MELEE_ATTACK1);
 		m_iTacticalVariant = TACTICAL_VARIANT_DEFAULT;
-		m_spawnEquipment = AllocPooledString("weapon_pistol");
+		if (random->RandomFloat() < 0.25F)
+		{
+			m_spawnEquipment = AllocPooledString("weapon_glock18");
+		}
+		else
+		{
+			m_spawnEquipment = AllocPooledString("weapon_pistol");
+		}
+	}
+
+	// Prevent unarmed soldiers
+	if (m_spawnEquipment == NULL_STRING && !KeyValue("usemarch", "1"))
+	{
+		m_spawnEquipment = AllocPooledString("weapon_smg1");
 	}
 
 	// 25% chance to equip the MP5
 	if (m_spawnEquipment == gm_isz_class_SMG1 && random->RandomFloat() < 0.25F)
 	{
 		m_spawnEquipment = AllocPooledString("weapon_mp5");
+	}
+	else if (m_spawnEquipment == gm_isz_class_AR2 && random->RandomFloat() < 0.25F)
+	{
 	}
 
 	m_bFirstEncounter	= true;// this is true when the grunt spawns, because he hasn't encountered an enemy yet.
