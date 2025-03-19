@@ -18,9 +18,13 @@
 LINK_ENTITY_TO_CLASS(logic_assault, CLogicAssault);
 
 BEGIN_DATADESC(CLogicAssault)
-DEFINE_KEYFIELD(m_ReuseDelay, FIELD_FLOAT, "ReuseDelay"),
-DEFINE_KEYFIELD(m_RenameNPC, FIELD_STRING, "RenameNPC"),
-DEFINE_FIELD(m_TimeNextAvailable, FIELD_TIME),
+//DEFINE_KEYFIELD(m_ReuseDelay, FIELD_FLOAT, "ReuseDelay"),
+//DEFINE_KEYFIELD(m_RenameNPC, FIELD_STRING, "RenameNPC"),
+//DEFINE_FIELD(m_TimeNextAvailable, FIELD_TIME),
 
 DEFINE_OUTPUT(m_OnSpawnNPC, "OnSpawnNPC"),
+DEFINE_OUTPUT(m_OnFirstWave, "OnFirstWave"),
+DEFINE_OUTPUT(m_OnNextWave, "OnNextWave"),
+DEFINE_OUTPUT(m_OnWaveDefeated, "OnWaveDefeated"),
+DEFINE_OUTPUT(m_OnAllWavesDefeated, "OnAllWaveDefeated"),
 END_DATADESC()
