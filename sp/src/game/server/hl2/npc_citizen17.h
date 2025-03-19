@@ -157,6 +157,8 @@ public:
 	inline bool		CanSurrender() { return m_bCanSurrender && m_SurrenderBehavior.CanSurrender(); }
 	inline bool		SurrenderAutomatically() { return m_SurrenderBehavior.SurrenderAutomatically(); }
 
+	int				m_iWillpowerModifier;
+
 	Disposition_t	IRelationType(CBaseEntity* pTarget);
 
 	//---------------------------------
