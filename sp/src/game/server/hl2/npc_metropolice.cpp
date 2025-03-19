@@ -117,6 +117,7 @@ ConVar	sk_metropolice_stitch_along_hitcount( "sk_metropolice_stitch_along_hitcou
 
 ConVar	sk_metropolice_health( "sk_metropolice_health","0");
 ConVar	sk_metropolice_simple_health( "sk_metropolice_simple_health","26");
+ConVar	sk_metropolice_elite_health("sk_metropolice_elite_health", "80");
 ConVar	sk_metropolice_stitch_distance( "sk_metropolice_stitch_distance","1000");
 
 ConVar	metropolice_chase_use_follow( "metropolice_chase_use_follow", "0" );
@@ -126,6 +127,8 @@ ConVar  metropolice_charge("metropolice_charge", "1" );
 #ifdef MAPBASE
 ConVar	metropolice_new_component_behavior("metropolice_new_component_behavior", "1");
 #endif
+
+static string_t metropolice_elite_model = AllocPooledString("models/elite_police.mdl");
 
 // How many clips of pistol ammo a metropolice carries.
 #define METROPOLICE_NUM_CLIPS			5
@@ -711,7 +714,14 @@ void CNPC_MetroPolice::Spawn( void )
 
 	if (!m_bSimpleCops)
 	{
-		m_iHealth = sk_metropolice_health.GetFloat();
+		if (GetModelName() == metropolice_elite_model)
+		{
+			m_iHealth = sk_metropolice_elite_health.GetFloat();
+		}
+		else
+		{
+			m_iHealth = sk_metropolice_health.GetFloat();
+		}
 	}
 	else
 	{
@@ -735,6 +745,18 @@ void CNPC_MetroPolice::Spawn( void )
 	m_HackedGunPos = Vector ( 0, 0, 55 );
 
 	m_iPistolClips = METROPOLICE_NUM_CLIPS;
+
+	if (m_spawnEquipment == NULL_STRING || m_spawnEquipment == gm_isz_class_Pistol)
+	{
+		if (random->RandomFloat() < 0.25F)
+		{
+			m_spawnEquipment = AllocPooledString("weapon_glock18");
+		}
+		else
+		{
+			m_spawnEquipment = AllocPooledString("weapon_pistol");
+		}
+	}
 
 	NPCInit();
 
