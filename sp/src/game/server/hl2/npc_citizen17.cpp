@@ -146,6 +146,11 @@ ConVar	ai_follow_move_commands( "ai_follow_move_commands", "1" );
 ConVar	ai_citizen_debug_commander( "ai_citizen_debug_commander", "1" );
 #define DebuggingCommanderMode() (ai_citizen_debug_commander.GetBool() && (m_debugOverlays & OVERLAY_NPC_SELECTED_BIT))
 
+ConVar npc_citizen_surrender_auto_distance("npc_citizen_surrender_auto_distance", "720");
+ConVar npc_citizen_surrender_ammo_scale_min("npc_citizen_surrender_ammo_scale_min", "0.05");
+ConVar npc_citizen_surrender_ammo_scale_max("npc_citizen_surrender_ammo_scale_max", "0.10");
+ConVar npc_citizen_surrender_ammo_deplete_multiplier("npc_citizen_surrender_ammo_deplete_multiplier", "0.80");
+
 //-----------------------------------------------------------------------------
 // Citizen expressions for the citizen expression types
 //-----------------------------------------------------------------------------
@@ -307,6 +312,8 @@ static const char *g_ppszModelLocs[] =
 	"Group01",
 	"Group02",
 	"Group03%s",
+	"Combine", // in the case these are indexed by citizentype, even tho citizentype 4 should be ignored
+	"Combine",
 };
 
 #define IsExcludedHead( type, bMedic, iHead) false // see XBox codeline for an implementation
@@ -321,6 +328,10 @@ int	ACT_CIT_BLINDED;		// Blinded by scanner photo
 int ACT_CIT_SHOWARMBAND;
 int ACT_CIT_HEAL;
 int	ACT_CIT_STARTLED;		// Startled by sneaky scanner
+
+//---------------------------------------------------------
+
+int g_interactionHandleSurrender = 0;
 
 //---------------------------------------------------------
 
@@ -444,6 +455,7 @@ bool CNPC_Citizen::CreateBehaviors()
 #else // Moved to CNPC_PlayerCompanion
 	AddBehavior( &m_FuncTankBehavior );
 #endif
+	AddBehavior(&m_SurrenderBehavior);
 	
 	return true;
 }
@@ -499,6 +511,9 @@ void CNPC_Citizen::Precache()
 #endif
 }
 
+string_t d2_prison_07 = AllocPooledString("d2_prison_07");
+string_t d3_c17_05 = AllocPooledString("d3_c17_05");
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 void CNPC_Citizen::PrecacheAllOfType( CitizenType_t type )
@@ -512,7 +527,7 @@ void CNPC_Citizen::PrecacheAllOfType( CitizenType_t type )
 	{
 		if ( !IsExcludedHead( type, false, i ) )
 		{
-			PrecacheModel( CFmtStr( "models/Humans/%s/%s", (const char *)(CFmtStr(g_ppszModelLocs[m_Type], "")), g_ppszRandomHeads[i] ) );
+			PrecacheModel(CFmtStr("models/Humans/%s/%s", (const char*)(CFmtStr(g_ppszModelLocs[m_Type], "")), g_ppszRandomHeads[i]));
 		}
 	}
 
@@ -615,7 +630,32 @@ void CNPC_Citizen::Spawn()
 
 	m_flTimePlayerStare = FLT_MAX;
 
-	AddEFlags( EFL_NO_DISSOLVE | EFL_NO_MEGAPHYSCANNON_RAGDOLL | EFL_NO_PHYSCANNON_INTERACTION );
+	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
+	{
+		AddEFlags(EFL_NO_DISSOLVE | EFL_NO_PHYSCANNON_INTERACTION);
+		m_bDontPickupWeapons = true;
+
+		if (m_spawnEquipment == NULL_STRING)
+		{
+			if (random->RandomFloat() < 0.25F)
+			{
+				m_spawnEquipment = AllocPooledString("weapon_glock18");
+			}
+			else
+			{
+				m_spawnEquipment = AllocPooledString("weapon_pistol");
+			}
+		}
+
+		if (gpGlobals->mapname == d3_c17_05)
+		{
+			CapabilitiesRemove(bits_CAP_MOVE_GROUND);
+		}
+	}
+	else
+	{
+		AddEFlags(EFL_NO_DISSOLVE | EFL_NO_MEGAPHYSCANNON_RAGDOLL | EFL_NO_PHYSCANNON_INTERACTION);
+	}
 
 	NPCInit();
 
@@ -688,6 +728,7 @@ void CNPC_Citizen::SelectModel()
 		PrecacheAllOfType( CT_DOWNTRODDEN );
 		PrecacheAllOfType( CT_REFUGEE );
 		PrecacheAllOfType( CT_REBEL );
+		PrecacheAllOfType( CT_COMBINE );
 	}
 
 	const char *pszModelName = NULL;
@@ -716,7 +757,7 @@ void CNPC_Citizen::SelectModel()
 			{ "coast",			CT_REFUGEE		},
 			{ "prison",			CT_DOWNTRODDEN	},
 			{ "c17",			CT_REBEL		},
-			{ "citadel",		CT_DOWNTRODDEN	},
+			{ "citadel",		CT_COMBINE		},
 		};
 
 		char szMapName[256];
@@ -878,7 +919,7 @@ void CNPC_Citizen::SelectModel()
 	// Unique citizen models are left alone
 	if ( m_Type != CT_UNIQUE )
 	{
-		SetModelName( AllocPooledString( CFmtStr( "models/Humans/%s/%s", (const char *)(CFmtStr(g_ppszModelLocs[ m_Type ], ( IsMedic() ) ? "m" : "" )), pszModelName ) ) );
+		SetModelName(AllocPooledString(CFmtStr("models/Humans/%s/%s", (const char*)(CFmtStr(g_ppszModelLocs[m_Type], (IsMedic()) ? "m" : "")), pszModelName)));
 	}
 }
 
@@ -902,6 +943,8 @@ void CNPC_Citizen::SelectExpressionType()
 	case CT_REBEL:
 		m_ExpressionType = (CitizenExpressionTypes_t)RandomInt( CIT_EXP_SCARED, CIT_EXP_ANGRY );
 		break;
+	case CT_COMBINE:
+		m_ExpressionType = (CitizenExpressionTypes_t)RandomInt(CIT_EXP_SCARED, CIT_EXP_ANGRY);
 
 	case CT_DEFAULT:
 	case CT_UNIQUE:
@@ -986,7 +1029,16 @@ string_t CNPC_Citizen::GetModelName() const
 //-----------------------------------------------------------------------------
 Class_T	CNPC_Citizen::Classify()
 {
-	if (NameMatches("npc_combine_cit_*"))
+	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
+		if (IsSurrendered())
+		{
+			if (GetActiveWeapon() != NULL)
+			{
+				m_SurrenderBehavior.StopSurrendering();
+				return CLASS_METROPOLICE;
+			}
+			return CLASS_NONE;
+		}
 		return CLASS_METROPOLICE;
 	if (NameMatches("npc_rioter_*"))
 		return CLASS_CITIZEN_REBEL;
@@ -1003,6 +1055,15 @@ Class_T	CNPC_Citizen::Classify()
 bool CNPC_Citizen::ShouldAlwaysThink() 
 { 
 	return ( BaseClass::ShouldAlwaysThink() || IsInPlayerSquad() ); 
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+Disposition_t CNPC_Citizen::IRelationType(CBaseEntity* pTarget)
+{
+	Disposition_t disposition = BaseClass::IRelationType(pTarget);
+	return disposition;
 }
 	
 //-----------------------------------------------------------------------------
@@ -1382,6 +1443,9 @@ int CNPC_Citizen::SelectSchedule()
 //-----------------------------------------------------------------------------
 int CNPC_Citizen::SelectSchedulePriorityAction()
 {
+	if (IsSurrendered() && (!m_SurrenderBehavior.ShouldBeStanding() || m_SurrenderBehavior.IsInterruptable()))
+		return SCHED_NONE;
+
 	int schedule = SelectScheduleHeal();
 	if ( schedule != SCHED_NONE )
 		return schedule;
@@ -1673,6 +1737,27 @@ int CNPC_Citizen::TranslateSchedule( int scheduleType )
 		{
 			return SCHED_STANDOFF;
 		}
+
+		// Don't chase enemies if you're weaponless!
+		if (GetActiveWeapon() == NULL)
+		{
+			if (m_SurrenderBehavior.SurrenderAutomatically() &&
+				GetEnemy() && (GetEnemy()->GetAbsOrigin() - GetAbsOrigin()).LengthSqr() < Square(npc_citizen_surrender_auto_distance.GetFloat()))
+			{
+				CBaseCombatCharacter* pBCC = GetEnemy()->MyCombatCharacterPointer();
+				if (pBCC && pBCC->FInViewCone(this) && (pBCC->IsPlayer() || (pBCC->IsNPC() && pBCC->MyNPCPointer()->IsPlayerAlly())))
+				{
+					// Surrender automatically if we're allowed to
+					if (m_SurrenderBehavior.CanSelectSchedule())
+					{
+						Msg("Surrendering automatically!\n");
+						return SCHED_STANDOFF;
+					}
+				}
+			}
+
+			return SCHED_STANDOFF;
+		}
 		break;
 
 	case SCHED_RANGE_ATTACK1:
@@ -1716,6 +1801,27 @@ int CNPC_Citizen::TranslateSchedule( int scheduleType )
 				{
 					return SCHED_CITIZEN_RANGE_ATTACK1_RPG;
 				}
+			}
+		}
+
+		if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
+		{
+			// Combine Security in d2_prison_07 will provide support by firing at the turrets
+			// Otherwise, they will advance to the target while shooting
+			if (gpGlobals->mapname == d2_prison_07)
+			{
+				if (GetEnemy() != NULL && EntIsClass(GetEnemy(), gm_isz_class_FloorTurret) && GetEnemy()->NameMatches("turret_buddy"))
+					return SCHED_RANGE_ATTACK1;
+				return SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE;
+			}
+
+			if (GetEnemy() != NULL && GetEnemy()->IsPlayer())
+			{
+				// Take cover from the player if they are within 25.0 radius
+				float distSqEnemy = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
+				if (distSqEnemy < 25.0 * 25.0 &&
+					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() < distSqEnemy)
+					return SCHED_TAKE_COVER_FROM_ENEMY;
 			}
 		}
 		break;
@@ -2295,6 +2401,29 @@ void CNPC_Citizen::SimpleUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE
 			// If I'm denying commander mode because a level designer has made that decision,
 			// then fire this output in case they've hooked it to an event.
 			m_OnDenyCommanderUse.FireOutput( this, this );
+		}
+	}
+
+	if (IsSurrendered() && m_SurrenderBehavior.IsSurrenderIdle())
+	{
+		if (m_SurrenderBehavior.ShouldBeStanding())
+		{
+			// Check if the player is asking for health
+			if (CanHeal() && ShouldHealTarget(pActivator, true))
+			{
+				Msg("Setting heal request\n");
+				SetCondition(COND_CIT_PLAYERHEALREQUEST);
+			}
+			else
+			{
+				Msg("Surrendering to ground\n");
+				m_SurrenderBehavior.SurrenderToGround();
+			}
+		}
+		else
+		{
+			Msg("Surrendering to standing\n");
+			m_SurrenderBehavior.SurrenderStand();
 		}
 	}
 
@@ -3823,6 +3952,17 @@ bool CNPC_Citizen::HandleInteraction(int interactionType, void *data, CBaseComba
 		}
 		return true;
 	}
+	// Handle Surrender
+	else if (interactionType == g_interactionHandleSurrender && m_SurrenderBehavior.CanSurrender() && GetHealth() < GetMaxHealth())
+	{
+		m_SurrenderBehavior.Surrender(sourceEnt);
+
+		if (sourceEnt)
+		{
+			AddLookTarget(sourceEnt, 1.0f, 3.0f, 1.0f);
+		}
+		return true;
+	}
 
 	return BaseClass::HandleInteraction( interactionType, data, sourceEnt );
 }
@@ -4059,6 +4199,114 @@ bool CNPC_Citizen::ShouldHealTossTarget( CBaseEntity *pTarget, bool bActiveUse )
 }
 #endif
 
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CNPC_Citizen::CCitizenSurrenderBehavior::Surrender(CBaseCombatCharacter* pCaptor)
+{
+	BaseClass::Surrender(pCaptor);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+int CNPC_Citizen::CCitizenSurrenderBehavior::SelectSchedule()
+{
+	int schedule = SCHED_NONE;
+	if (IsSurrenderIdleStanding() || IsSurrenderMovingToIdle())
+	{
+		//if (HasCondition( COND_CIT_PLAYERHEALREQUEST ))
+		{
+			// Heal if needed
+			schedule = GetOuterCit()->SelectScheduleHeal();
+			if (schedule != SCHED_NONE)
+				return schedule;
+		}
+
+		if (GetOuterCit()->NameMatches("npc_combine_cit_*") || GetOuterCit()->m_Type == CT_COMBINE)
+		{
+			// Look for a weapon immediately
+			schedule = GetOuterCit()->SelectScheduleRetrieveItem();
+			if (schedule != SCHED_NONE)
+				return schedule;
+		}
+
+		schedule = GetOuterCit()->SelectSchedulePlayerPush();
+		if (schedule != SCHED_NONE)
+			return schedule;
+	}
+
+	return BaseClass::SelectSchedule();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CNPC_Citizen::CCitizenSurrenderBehavior::BuildScheduleTestBits()
+{
+	BaseClass::BuildScheduleTestBits();
+
+	if (IsSurrenderIdleStanding())
+	{
+		GetOuter()->SetCustomInterruptCondition(COND_CIT_PLAYERHEALREQUEST);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : *pTask - 
+//-----------------------------------------------------------------------------
+void CNPC_Citizen::CCitizenSurrenderBehavior::RunTask(const Task_t* pTask)
+{
+	switch (pTask->iTask)
+	{
+	case TASK_SURRENDER_IDLE_LOOP:
+		if (NextSurrenderIdleCheck() < gpGlobals->curtime)
+		{
+			if (IsSurrenderIdleStanding())
+			{
+				// Check if there's anyone in our squad nearby who should be healed
+				// (bit of a hack, but there's no other way to interrupt the schedule)
+				if (GetOuter()->IsInSquad())
+				{
+					CBaseEntity* pEntity = NULL;
+					float distClosestSq = Square(128.0f);
+					float distCurSq;
+
+					AISquadIter_t iter;
+					CAI_BaseNPC* pSquadmate = GetOuter()->GetSquad()->GetFirstMember(&iter);
+					while (pSquadmate)
+					{
+						if (pSquadmate != GetOuter())
+						{
+							distCurSq = (GetAbsOrigin() - pSquadmate->GetAbsOrigin()).LengthSqr();
+							if (distCurSq < distClosestSq && GetOuterCit()->ShouldHealTarget(pSquadmate))
+							{
+								distClosestSq = distCurSq;
+								pEntity = pSquadmate;
+							}
+						}
+
+						pSquadmate = GetOuter()->GetSquad()->GetNextMember(&iter);
+					}
+
+					if (pEntity)
+					{
+						// Assume the heal schedule will be selected
+						TaskComplete();
+					}
+				}
+			}
+
+			BaseClass::RunTask(pTask);
+		}
+		break;
+
+	default:
+		BaseClass::RunTask(pTask);
+		break;
+	}
+}
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -4441,6 +4689,7 @@ AI_BEGIN_CUSTOM_NPC( npc_citizen, CNPC_Citizen )
 	DECLARE_CONDITION( COND_CIT_PLAYERHEALREQUEST )
 	DECLARE_CONDITION( COND_CIT_COMMANDHEAL )
 	DECLARE_CONDITION( COND_CIT_START_INSPECTION )
+	DECLARE_CONDITION( COND_CIT_DISARMED )
 
 	//Events
 	DECLARE_ANIMEVENT( AE_CITIZEN_GET_PACKAGE )
@@ -4595,6 +4844,53 @@ AI_BEGIN_CUSTOM_NPC( npc_citizen, CNPC_Citizen )
 		"		TASK_CIT_LEAVE_TRAIN		0"
 		""
 		"	Interrupts"
+	)
+
+	//=========================================================
+	// > RangeAttack1Advance
+	//	New schedule by 1upD to fire and then charge towards the player
+	//=========================================================
+	DEFINE_SCHEDULE
+	(
+	SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE,
+
+	"	Tasks"
+	"		TASK_STOP_MOVING		0"
+	"		TASK_FACE_ENEMY			0"
+	"		TASK_ANNOUNCE_ATTACK	1"	// 1 = primary attack
+	"		TASK_RANGE_ATTACK1		0"
+	"		TASK_SET_SCHEDULE		SCHEDULE:SCHED_CHASE_ENEMY"
+	""
+	"	Interrupts"
+	"		COND_NO_PRIMARY_AMMO"
+	"		COND_NEW_ENEMY"
+	"		COND_ENEMY_DEAD"
+	"		COND_ENEMY_UNREACHABLE"
+	"		COND_CAN_MELEE_ATTACK1"
+	"		COND_CAN_RANGE_ATTACK2"
+	"		COND_CAN_MELEE_ATTACK2"
+	"		COND_TOO_CLOSE_TO_ATTACK"
+	"		COND_TASK_FAILED"
+	"		COND_LOST_ENEMY"
+	"		COND_BETTER_WEAPON_AVAILABLE"
+	"		COND_HEAR_DANGER"
+	"		COND_CIT_WILLPOWER_LOW"
+	)
+
+	//=========================================================
+	// Ported from EZ2's code
+	//=========================================================
+	DEFINE_SCHEDULE
+	(
+	SCHED_CITIZEN_BURNING_STAND,
+
+	"	Tasks"
+	"		TASK_SET_ACTIVITY				ACTIVITY:ACT_IDLE_ON_FIRE"
+	"		TASK_WAIT						3.5" // Blixibon - Metrocops die after 1.5, but 3.5 gives citizens more scorch time and players more traumatization time
+	"		TASK_CIT_DIE_INSTANTLY			DMG_BURN"
+	"		TASK_WAIT						1.0"
+	"	"
+	"	Interrupts"
 	)
 
 AI_END_CUSTOM_NPC()
