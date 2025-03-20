@@ -7,8 +7,14 @@ class CLogicAssault : public CLogicalEntity
 
 	void Spawn(void);
 	void AssaultThink(void);
+	void SUB_DoNothing(void) {};
+	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* m_hIgnoreEntity);
+	bool CanMakeNPC(bool bIgnoreSolidEntities = false, CBaseEntity* m_hIgnoreEntity);
 
 	DECLARE_DATADESC();
+
+	bool m_bDisabled;
+	int m_iNumEnemies;
 
 	COutputEHANDLE m_OnSpawnNPC; // Fired when the wave spawns an NPC (!activator is the NPC)
 	COutputEvent m_OnFirstWave; // Fired on the first wave
