@@ -10,15 +10,29 @@ class CLogicAssault : public CLogicalEntity
 	void SUB_DoNothing(void) {};
 	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* m_hIgnoreEntity);
 	bool CanMakeNPC(bool bIgnoreSolidEntities = false, CBaseEntity* m_hIgnoreEntity);
+	CNPCSpawnDestination* GetNearbySpawnPoint();
+	virtual void DeathNotice(CBaseEntity* pChild);
+	virtual void MakeNPC(void) = 0;
+	virtual void Enable(void);
+	virtual void Disable(void);
+	virtual	void ChildPostSpawn(CAI_BaseNPC* pChild);
 
 	DECLARE_DATADESC();
 
 	bool m_bDisabled;
-	int m_iNumEnemies;
+	bool m_bEndlessWaves; // if enabled, the m_iMaxWaves value is ignored and waves go on and on
+	bool m_bIsFirstWaveTriggered; // guard-check for first wave triggers
+	int m_iNumEnemies; // max enemies in a wave
+	int m_iNumWave; // the wave number to keep track of, when spawning enemy squads
+	int m_iMaxWaves; // the maximum number of waves the assault will have
+	int m_iPhase; // the phase of this wave, each wave has three phases before proceeding to the next wave and resetting this value
+
+	void InputEnable(inputdata_t& inputdata);
+	void InputDisable(inputdata_t& inputdata);
 
 	COutputEHANDLE m_OnSpawnNPC; // Fired when the wave spawns an NPC (!activator is the NPC)
-	COutputEvent m_OnFirstWave; // Fired on the first wave
-	COutputEvent m_OnNextWave; // Fired when the next wave hits
+	COutputEvent m_OnFirstPhase; // Fired on the first phase
+	COutputEvent m_OnNextPhase; // Fired when the next phase hits
 	COutputEvent m_OnWaveDefeated; // Fired when the wave is defeated
 	COutputEvent m_OnAllWavesDefeated; // Fired when all waves are defeated (only if endless waves isn't set)
 };

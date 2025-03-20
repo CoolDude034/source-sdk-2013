@@ -3,6 +3,7 @@
 // Purpose: An entity that creates NPCs in the game similar to npc_maker's. But this entity
 //			spawns enemies in wave-after-wave and handles it's customization trough script files
 //			and VScript.
+//			Most of this code is from monstermaker.cpp but repurposed
 //
 //=============================================================================//
 
@@ -16,6 +17,7 @@
 #include "tier0/memdbgon.h"
 
 int const MAX_ENEMIES = 8;
+int const MAX_ENEMIES_PER_WAVE = 4;
 
 LINK_ENTITY_TO_CLASS(logic_assault, CLogicAssault);
 
@@ -25,14 +27,16 @@ BEGIN_DATADESC(CLogicAssault)
 //DEFINE_FIELD(m_TimeNextAvailable, FIELD_TIME),
 
 DEFINE_OUTPUT(m_OnSpawnNPC, "OnSpawnNPC"),
-DEFINE_OUTPUT(m_OnFirstWave, "OnFirstWave"),
-DEFINE_OUTPUT(m_OnNextWave, "OnNextWave"),
+DEFINE_OUTPUT(m_OnFirstPhase, "OnFirstPhase"),
+DEFINE_OUTPUT(m_OnNextPhase, "OnNextPhase"),
 DEFINE_OUTPUT(m_OnWaveDefeated, "OnWaveDefeated"),
 DEFINE_OUTPUT(m_OnAllWavesDefeated, "OnAllWaveDefeated"),
 END_DATADESC()
 
 void CLogicAssault::Spawn(void)
 {
+	m_iNumWave = 1;
+	m_iPhase = 1;
 	if (!m_bDisabled)
 	{
 		SetThink(&CLogicAssault::AssaultThink);
@@ -41,12 +45,19 @@ void CLogicAssault::Spawn(void)
 	else
 	{
 		//wait to be activated.
-		SetThink(&CBaseNPCMaker::SUB_DoNothing);
+		SetThink(&CLogicAssault::SUB_DoNothing);
 	}
 }
 
 void CLogicAssault::AssaultThink(void)
 {
+	SetNextThink(gpGlobals->curtime + 0.1f);
+	if (m_iNumWave == 1 && !m_bIsFirstWaveTriggered)
+	{
+		m_bIsFirstWaveTriggered = true;
+		m_OnFirstPhase.FireOutput(this, this);
+	}
+	MakeNPC();
 }
 
 //-----------------------------------------------------------------------------
@@ -142,3 +153,177 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CBaseEntity* m_hIgnore
 
 	return true;
 }
+
+CNPCSpawnDestination* CLogicAssault::GetNearbySpawnPoint()
+{
+	CBasePlayer* pPlayer = UTIL_GetLocalPlayer();
+	if (pPlayer == NULL) return NULL;
+	CBaseEntity* pSpawnPoint = gEntList.FindEntityByClassnameNearest("info_npc_spawn_destination", pPlayer->GetAbsOrigin(), 300.0F);
+	if (pSpawnPoint && pSpawnPoint->NameMatches("info_enemy_spawn_point"))
+	{
+		return dynamic_cast<CNPCSpawnDestination*>(pSpawnPoint);
+	}
+}
+
+void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
+{
+	// ok, we've gotten the deathnotice from our child, now clear out its owner if we don't want it to fade.
+	m_iNumEnemies--;
+
+	// If we're here, we're getting erroneous death messages from children we haven't created
+	AssertMsg(m_iNumEnemies >= 0, "logic_assault receiving child death notice but thinks has no children\n");
+
+	// If all enemies in this wave are defeated or there is one member left, proceed to the next wave
+	if (m_iNumEnemies <= 1)
+	{
+		// If we beat all three phases, go to the next wave
+		if (m_iPhase > 3)
+		{
+			m_iPhase = 0;
+			m_iNumWave++;
+			m_OnWaveDefeated.FireOutput(this, this);
+		}
+		else
+		{
+			m_iPhase++;
+			m_OnNextPhase.FireOutput(this, this);
+		}
+		if (!m_bEndlessWaves && m_iNumWave > m_iMaxWaves)
+		{
+			m_OnAllWavesDefeated.FireOutput(this, this);
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Creates the NPC.
+//-----------------------------------------------------------------------------
+void CLogicAssault::MakeNPC(void)
+{
+	if (!CanMakeNPC())
+		return;
+
+	CNPCSpawnDestination* pSpawnPoint = GetNearbySpawnPoint();
+	if (pSpawnPoint == NULL)
+		return;
+
+	CAI_BaseNPC* pent = (CAI_BaseNPC*)CreateEntityByName("npc_combine_s");
+
+	if (!pent)
+	{
+		Warning("NULL Ent in NPCMaker!\n");
+		return;
+	}
+
+	m_OnSpawnNPC.Set(pent, pent, this);
+
+	pent->SetAbsOrigin(pSpawnPoint->GetAbsOrigin());
+
+	// Strip pitch and roll from the spawner's angles. Pass only yaw to the spawned NPC.
+	QAngle angles = pSpawnPoint->GetAbsAngles();
+	angles.x = 0.0;
+	angles.z = 0.0;
+	pent->SetAbsAngles(angles);
+
+	pent->AddSpawnFlags(SF_NPC_FALL_TO_GROUND);
+	pent->AddSpawnFlags(SF_NPC_FADE_CORPSE);
+
+	if (pent->ClassMatches("npc_combine_s"))
+	{
+		if (random->RandomFloat() < 0.25F)
+		{
+			pent->m_spawnEquipment = AllocPooledString("weapon_shotgun");
+		}
+		else if (random->RandomFloat() < 0.15F)
+		{
+			pent->m_spawnEquipment = AllocPooledString("weapon_ar2");
+		}
+		else
+		{
+			pent->m_spawnEquipment = AllocPooledString("weapon_smg1");
+		}
+	}
+	else if (pent->ClassMatches("npc_metropolice"))
+	{
+		if (random->RandomFloat() < 0.25F)
+		{
+			pent->m_spawnEquipment = AllocPooledString("weapon_shotgun");
+		}
+		else
+		{
+			pent->m_spawnEquipment = AllocPooledString("weapon_smg1");
+		}
+	}
+	else if (pent->ClassMatches("npc_citizen"))
+	{
+		if (random->RandomFloat() < 0.25F)
+		{
+			pent->m_spawnEquipment = AllocPooledString("weapon_shotgun");
+		}
+		else
+		{
+			pent->m_spawnEquipment = AllocPooledString("weapon_smg1");
+		}
+	}
+	pent->SetSquadName(AllocPooledString("squad_assault_group"));
+	pent->SetHintGroup(AllocPooledString("hint_assault"));
+
+	DispatchSpawn(pent);
+	pent->SetOwnerEntity(this);
+	ChildPostSpawn(pent);
+
+	m_iNumEnemies++;// count this NPC
+}
+
+void CLogicAssault::Enable(void)
+{
+	m_bDisabled = false;
+	if (m_iNumWave == 0)
+	{
+		m_iNumWave = 1;
+	}
+	SetThink(&CLogicAssault::AssaultThink);
+	SetNextThink(gpGlobals->curtime);
+}
+
+void CLogicAssault::Disable(void)
+{
+	m_bDisabled = true;
+	SetThink(NULL);
+}
+
+// Taken from monstermaker.cpp
+void CLogicAssault::ChildPostSpawn(CAI_BaseNPC* pChild)
+{
+	// If I'm stuck inside any props, remove them
+	bool bFound = true;
+	while (bFound)
+	{
+		trace_t tr;
+		UTIL_TraceHull(pChild->GetAbsOrigin(), pChild->GetAbsOrigin(), pChild->WorldAlignMins(), pChild->WorldAlignMaxs(), MASK_NPCSOLID, pChild, COLLISION_GROUP_NONE, &tr);
+		//NDebugOverlay::Box( pChild->GetAbsOrigin(), pChild->WorldAlignMins(), pChild->WorldAlignMaxs(), 0, 255, 0, 32, 5.0 );
+		if (tr.fraction != 1.0 && tr.m_pEnt)
+		{
+			if (FClassnameIs(tr.m_pEnt, "prop_physics"))
+			{
+				// Set to non-solid so this loop doesn't keep finding it
+				tr.m_pEnt->AddSolidFlags(FSOLID_NOT_SOLID);
+				UTIL_RemoveImmediate(tr.m_pEnt);
+				continue;
+			}
+		}
+
+		bFound = false;
+	}
+}
+
+void CLogicAssault::InputEnable(inputdata_t& inputdata)
+{
+	Enable();
+}
+
+void CLogicAssault::InputDisable(inputdata_t& inputdata)
+{
+	Disable();
+}
+
