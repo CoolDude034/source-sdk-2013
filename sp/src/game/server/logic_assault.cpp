@@ -16,15 +16,22 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-int const MAX_ENEMIES = 8;
-int const MAX_ENEMIES_PER_WAVE = 4;
+#define GENERIC_ASSAULT_FILE "scripts/assault_wavedata.txt"
+#define LEVEL_ASSAULT_TWEAK_FILE UTIL_VarArgs("maps/%s_assault_wavedata.txt", STRING(gpGlobals->mapname))
+
+inline bool GetAssaultSettingsKeyValues(KeyValues* pKeyValues)
+{
+	// Try to load a map's specific wave data
+	// If that fails, just load the global one
+	if (pKeyValues->LoadFromFile(filesystem, LEVEL_ASSAULT_TWEAK_FILE, "MOD"))
+		return true;
+	return pKeyValues->LoadFromFile(filesystem, GENERIC_ASSAULT_FILE, "MOD");
+}
 
 LINK_ENTITY_TO_CLASS(logic_assault, CLogicAssault);
 
 BEGIN_DATADESC(CLogicAssault)
-//DEFINE_KEYFIELD(m_ReuseDelay, FIELD_FLOAT, "ReuseDelay"),
-//DEFINE_KEYFIELD(m_RenameNPC, FIELD_STRING, "RenameNPC"),
-//DEFINE_FIELD(m_TimeNextAvailable, FIELD_TIME),
+//DEFINE_KEYFIELD(m_bEndlessWaves, FIELD_BOOLEAN, "EndlessWaves"),
 
 DEFINE_OUTPUT(m_OnSpawnNPC, "OnSpawnNPC"),
 DEFINE_OUTPUT(m_OnFirstPhase, "OnFirstPhase"),
@@ -37,6 +44,37 @@ void CLogicAssault::Spawn(void)
 {
 	m_iNumWave = 1;
 	m_iPhase = 1;
+	KeyValues* assaultdata = new KeyValues("AssaultWaveData");
+	if (GetAssaultSettingsKeyValues(assaultdata))
+	{
+		m_bEndlessWaves = assaultdata->GetBool("EndlessWaves", true);
+		m_iMaxEnemies = assaultdata->GetInt("MaxEnemies", 8);
+		m_iMaxEnemiesPerWave = assaultdata->GetInt("MaxEnemiesPerWave", 4);
+		m_iMaxWaves = assaultdata->GetInt("MaxWaves", 5);
+		int enemyType = assaultdata->GetInt("EnemyType", 0);
+		if (enemyType == 1)
+		{
+			m_EnemyType = ENEMY_TYPE_REBEL;
+		}
+		else if (enemyType == 2)
+		{
+			m_EnemyType = ENEMY_TYPE_COPS;
+		}
+		else
+		{
+			m_EnemyType = ENEMY_TYPE_COMBINE;
+		}
+		m_EnemyModel = assaultdata->GetString("EnemyModel", "models/combine_soldier.mdl");
+		m_fShotgunChance = assaultdata->GetFloat("ShotgunChance", 0.25F);
+		m_fAR2Chance = assaultdata->GetFloat("AR2Chance", 0.15F);
+		m_fGrenadeChance = assaultdata->GetFloat("GrenadeChance", 0.25F);
+		m_fEnemyCitizenMedicChance = assaultdata->GetFloat("MedicChance", 0.15F);
+		m_TacticalVariant = assaultdata->GetString("TacticalVariant", "2");
+		m_flSpawnFrequency = assaultdata->GetFloat("SpawnFrequency", 0.1F);
+
+		assaultdata->deleteThis();
+	}
+	RunScriptFile("assault_wave_manager"); // Run the assault_wave_manager VScript
 	if (!m_bDisabled)
 	{
 		SetThink(&CLogicAssault::AssaultThink);
@@ -87,7 +125,7 @@ bool CLogicAssault::HumanHullFits(const Vector& vecLocation, CBaseEntity* m_hIgn
 //-----------------------------------------------------------------------------
 bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CBaseEntity* m_hIgnoreEntity)
 {
-	if (m_iNumEnemies >= MAX_ENEMIES)
+	if (m_iNumEnemies >= m_iMaxEnemies)
 	{
 		return false;
 	}
@@ -230,11 +268,20 @@ void CLogicAssault::MakeNPC(void)
 
 	if (pent->ClassMatches("npc_combine_s"))
 	{
-		if (random->RandomFloat() < 0.25F)
+		pent->SetModelName(AllocPooledString(m_EnemyModel));
+		if (m_TacticalVariant == "0" || m_TacticalVariant == "1" || m_TacticalVariant == "2" || m_TacticalVariant == "3")
+		{
+			pent->KeyValue("tacticalvariant", m_TacticalVariant);
+		}
+		else
+		{
+			pent->KeyValue("tacticalvariant", "1");
+		}
+		if (random->RandomFloat() < m_fShotgunChance)
 		{
 			pent->m_spawnEquipment = AllocPooledString("weapon_shotgun");
 		}
-		else if (random->RandomFloat() < 0.15F)
+		else if (random->RandomFloat() < m_fAR2Chance)
 		{
 			pent->m_spawnEquipment = AllocPooledString("weapon_ar2");
 		}
@@ -245,7 +292,8 @@ void CLogicAssault::MakeNPC(void)
 	}
 	else if (pent->ClassMatches("npc_metropolice"))
 	{
-		if (random->RandomFloat() < 0.25F)
+		pent->SetModelName(AllocPooledString("models/elite_police.mdl"));
+		if (random->RandomFloat() < m_fShotgunChance)
 		{
 			pent->m_spawnEquipment = AllocPooledString("weapon_shotgun");
 		}
@@ -256,7 +304,9 @@ void CLogicAssault::MakeNPC(void)
 	}
 	else if (pent->ClassMatches("npc_citizen"))
 	{
-		if (random->RandomFloat() < 0.25F)
+		pent->AddSpawnFlags(262144); // Random head
+		pent->KeyValue("citizentype", "3"); // Rebel Citizen
+		if (random->RandomFloat() < m_fShotgunChance)
 		{
 			pent->m_spawnEquipment = AllocPooledString("weapon_shotgun");
 		}
@@ -265,12 +315,27 @@ void CLogicAssault::MakeNPC(void)
 			pent->m_spawnEquipment = AllocPooledString("weapon_smg1");
 		}
 	}
+	if (random->RandomFloat() < m_fGrenadeChance)
+	{
+		pent->KeyValue("NumGrenades", "5");
+	}
+	if (random->RandomFloat() < m_fEnemyCitizenMedicChance)
+	{
+		pent->AddSpawnFlags(131072); // Medic
+	}
+	pent->AddSpawnFlags(1024); // Think outside of PVS
 	pent->SetSquadName(AllocPooledString("squad_assault_group"));
 	pent->SetHintGroup(AllocPooledString("hint_assault"));
 
 	DispatchSpawn(pent);
 	pent->SetOwnerEntity(this);
 	ChildPostSpawn(pent);
+
+	CBasePlayer* pPlayer = UTIL_GetLocalPlayer();
+	if (pPlayer)
+	{
+		pent->UpdateEnemyMemory(NULL, pPlayer->GetAbsOrigin());
+	}
 
 	m_iNumEnemies++;// count this NPC
 }
