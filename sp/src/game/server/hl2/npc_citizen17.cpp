@@ -1025,8 +1025,10 @@ Class_T	CNPC_Citizen::Classify()
 {
 	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
 		return CLASS_COMBINE; //CLASS_METROPOLICE
-	if (NameMatches("npc_rioter_*") || GetSquad() != NULL && GetSquad()->GetName() == "squad_assault_group")
+	if (NameMatches("npc_rioter_*"))
 		return CLASS_CITIZEN_REBEL;
+	if (GetSquad() != NULL && GetSquad()->GetName() == "squad_assault_group")
+		return CLASS_CONSCRIPT; // conscripts are used for hostile rebels spawned as part of assaults
 	if (GlobalEntity_GetState("gordon_precriminal") == GLOBAL_ON)
 		return CLASS_CITIZEN_PASSIVE;
 	if (GlobalEntity_GetState("citizens_passive") == GLOBAL_ON)
