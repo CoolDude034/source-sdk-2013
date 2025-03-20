@@ -1,12 +1,6 @@
 #include "cbase.h"
 #include "monstermaker.h"
 
-enum EnemyType {
-	ENEMY_TYPE_COMBINE = 0,
-	ENEMY_TYPE_REBEL,
-	ENEMY_TYPE_COPS,
-};
-
 class CLogicAssault : public CLogicalEntity
 {
 	DECLARE_CLASS(CLogicAssault, CLogicalEntity);
@@ -14,14 +8,15 @@ class CLogicAssault : public CLogicalEntity
 	void Spawn(void);
 	void AssaultThink(void);
 	void SUB_DoNothing(void) {};
-	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* m_hIgnoreEntity);
+	bool HumanHullFits(const Vector& vecLocation);
 	bool CanMakeNPC(bool bIgnoreSolidEntities = false, CBaseEntity* m_hIgnoreEntity);
-	CNPCSpawnDestination* GetNearbySpawnPoint();
+	CNPCSpawnDestination* FindSpawnDestination();
 	virtual void DeathNotice(CBaseEntity* pChild);
 	virtual void MakeNPC(void) = 0;
 	virtual void Enable(void);
 	virtual void Disable(void);
 	virtual	void ChildPostSpawn(CAI_BaseNPC* pChild);
+	virtual const char* GetEnemyType();
 
 	DECLARE_DATADESC();
 
@@ -30,12 +25,12 @@ class CLogicAssault : public CLogicalEntity
 
 	bool m_bDisabled;
 	bool m_bEndlessWaves; // if enabled, the m_iMaxWaves value is ignored and waves go on and on
-	bool m_bIsFirstWaveTriggered; // guard-check for first wave triggers
 	int m_iNumEnemies; // max enemies in a wave
 	int m_iNumWave; // the wave number to keep track of, when spawning enemy squads
 	int m_iMaxWaves; // the maximum number of waves the assault will have
 	int m_iPhase; // the phase of this wave, each wave has three phases before proceeding to the next wave and resetting this value
-	EnemyType m_EnemyType;
+	int m_iMinEnemiesToEndWave; // how many enemies there can be on the map before the wave ends
+	const char* m_EnemyType;
 	const char* m_EnemyModel;
 
 	float m_fShotgunChance;
@@ -49,12 +44,13 @@ class CLogicAssault : public CLogicalEntity
 
 	const char* m_TacticalVariant;
 
+	const char* m_SpawnType;
+	float m_fSpawnDistance;
+
 	void InputEnable(inputdata_t& inputdata);
 	void InputDisable(inputdata_t& inputdata);
 
 	COutputEHANDLE m_OnSpawnNPC; // Fired when the wave spawns an NPC (!activator is the NPC)
-	COutputEvent m_OnFirstPhase; // Fired on the first phase
-	COutputEvent m_OnNextPhase; // Fired when the next phase hits
-	COutputEvent m_OnWaveDefeated; // Fired when the wave is defeated
+	COutputEvent m_OnNextWave; // Fired when the next wave arrives
 	COutputEvent m_OnAllWavesDefeated; // Fired when all waves are defeated (only if endless waves isn't set)
 };

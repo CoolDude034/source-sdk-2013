@@ -19,6 +19,8 @@
 #define GENERIC_ASSAULT_FILE "scripts/assault_wavedata.txt"
 #define LEVEL_ASSAULT_TWEAK_FILE UTIL_VarArgs("maps/%s_assault_wavedata.txt", STRING(gpGlobals->mapname))
 
+#define ASSAULT_SPAWN_POINT_NAME "info_assault_spawn_point"
+
 inline bool GetAssaultSettingsKeyValues(KeyValues* pKeyValues)
 {
 	// Try to load a map's specific wave data
@@ -34,16 +36,14 @@ BEGIN_DATADESC(CLogicAssault)
 //DEFINE_KEYFIELD(m_bEndlessWaves, FIELD_BOOLEAN, "EndlessWaves"),
 
 DEFINE_OUTPUT(m_OnSpawnNPC, "OnSpawnNPC"),
-DEFINE_OUTPUT(m_OnFirstPhase, "OnFirstPhase"),
-DEFINE_OUTPUT(m_OnNextPhase, "OnNextPhase"),
-DEFINE_OUTPUT(m_OnWaveDefeated, "OnWaveDefeated"),
+DEFINE_OUTPUT(m_OnNextWave, "OnNextWave"),
 DEFINE_OUTPUT(m_OnAllWavesDefeated, "OnAllWaveDefeated"),
 END_DATADESC()
 
 void CLogicAssault::Spawn(void)
 {
 	m_iNumWave = 1;
-	m_iPhase = 1;
+	m_iPhase = 0;
 	KeyValues* assaultdata = new KeyValues("AssaultWaveData");
 	if (GetAssaultSettingsKeyValues(assaultdata))
 	{
@@ -51,19 +51,8 @@ void CLogicAssault::Spawn(void)
 		m_iMaxEnemies = assaultdata->GetInt("MaxEnemies", 8);
 		m_iMaxEnemiesPerWave = assaultdata->GetInt("MaxEnemiesPerWave", 4);
 		m_iMaxWaves = assaultdata->GetInt("MaxWaves", 5);
-		int enemyType = assaultdata->GetInt("EnemyType", 0);
-		if (enemyType == 1)
-		{
-			m_EnemyType = ENEMY_TYPE_REBEL;
-		}
-		else if (enemyType == 2)
-		{
-			m_EnemyType = ENEMY_TYPE_COPS;
-		}
-		else
-		{
-			m_EnemyType = ENEMY_TYPE_COMBINE;
-		}
+		m_iMinEnemiesToEndWave = assaultdata->GetInt("MinEnemiesToEndWave", 1);
+		m_EnemyType = assaultdata->GetString("EnemyType", "combine");
 		m_EnemyModel = assaultdata->GetString("EnemyModel", "models/combine_soldier.mdl");
 		m_fShotgunChance = assaultdata->GetFloat("ShotgunChance", 0.25F);
 		m_fAR2Chance = assaultdata->GetFloat("AR2Chance", 0.15F);
@@ -71,6 +60,8 @@ void CLogicAssault::Spawn(void)
 		m_fEnemyCitizenMedicChance = assaultdata->GetFloat("MedicChance", 0.15F);
 		m_TacticalVariant = assaultdata->GetString("TacticalVariant", "2");
 		m_flSpawnFrequency = assaultdata->GetFloat("SpawnFrequency", 0.1F);
+		m_SpawnType = assaultdata->GetString("SpawnType", "random");
+		m_fSpawnDistance = assaultdata->GetFloat("SpawnDistance", 0.1F);
 
 		assaultdata->deleteThis();
 	}
@@ -89,12 +80,7 @@ void CLogicAssault::Spawn(void)
 
 void CLogicAssault::AssaultThink(void)
 {
-	SetNextThink(gpGlobals->curtime + 0.1f);
-	if (m_iNumWave == 1 && !m_bIsFirstWaveTriggered)
-	{
-		m_bIsFirstWaveTriggered = true;
-		m_OnFirstPhase.FireOutput(this, this);
-	}
+	SetNextThink(gpGlobals->curtime + m_flSpawnFrequency);
 	MakeNPC();
 }
 
@@ -102,7 +88,7 @@ void CLogicAssault::AssaultThink(void)
 // A not-very-robust check to see if a human hull could fit at this location.
 // used to validate spawn destinations.
 //-----------------------------------------------------------------------------
-bool CLogicAssault::HumanHullFits(const Vector& vecLocation, CBaseEntity* m_hIgnoreEntity)
+bool CLogicAssault::HumanHullFits(const Vector& vecLocation)
 {
 	trace_t tr;
 	UTIL_TraceHull(vecLocation,
@@ -110,7 +96,7 @@ bool CLogicAssault::HumanHullFits(const Vector& vecLocation, CBaseEntity* m_hIgn
 		NAI_Hull::Mins(HULL_HUMAN),
 		NAI_Hull::Maxs(HULL_HUMAN),
 		MASK_NPCSOLID,
-		m_hIgnoreEntity,
+		NULL,
 		COLLISION_GROUP_NONE,
 		&tr);
 
@@ -164,7 +150,7 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CBaseEntity* m_hIgnore
 						COLLISION_GROUP_NONE,
 						&tr);
 
-					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1), m_hIgnoreEntity))
+					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1)))
 					{
 						return false;
 					}
@@ -192,15 +178,133 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CBaseEntity* m_hIgnore
 	return true;
 }
 
-CNPCSpawnDestination* CLogicAssault::GetNearbySpawnPoint()
+#define MAX_DESTINATION_ENTS	100
+CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 {
+	CNPCSpawnDestination* pDestinations[MAX_DESTINATION_ENTS];
+	CBaseEntity* pEnt = NULL;
 	CBasePlayer* pPlayer = UTIL_GetLocalPlayer();
-	if (pPlayer == NULL) return NULL;
-	CBaseEntity* pSpawnPoint = gEntList.FindEntityByClassnameNearest("info_npc_spawn_destination", pPlayer->GetAbsOrigin(), 300.0F);
-	if (pSpawnPoint && pSpawnPoint->NameMatches("info_enemy_spawn_point"))
+	int	count = 0;
+
+	if (!pPlayer)
 	{
-		return dynamic_cast<CNPCSpawnDestination*>(pSpawnPoint);
+		return NULL;
 	}
+
+	// Collect all the qualifiying destination ents
+	pEnt = gEntList.FindEntityByName(NULL, ASSAULT_SPAWN_POINT_NAME);
+
+	if (!pEnt)
+	{
+		DevWarning("logic_assault doesn't have any spawn destinations!\n");
+		return NULL;
+	}
+
+	while (pEnt)
+	{
+		CNPCSpawnDestination* pDestination;
+
+		pDestination = dynamic_cast <CNPCSpawnDestination*>(pEnt);
+
+		if (pDestination && pDestination->IsAvailable())
+		{
+			bool fValid = true;
+			Vector vecTest = pDestination->GetAbsOrigin();
+
+			// Right now View Cone check is omitted intentionally.
+			Vector vecTopOfHull = NAI_Hull::Maxs(HULL_HUMAN);
+			vecTopOfHull.x = 0;
+			vecTopOfHull.y = 0;
+			bool fVisible = (pPlayer->FVisible(vecTest) || pPlayer->FVisible(vecTest + vecTopOfHull));
+
+			if (!fVisible)
+				fValid = false;
+			else
+			{
+				if (!(pPlayer->GetFlags() & FL_NOTARGET))
+					fValid = false;
+			}
+
+			if (fValid)
+			{
+				pDestinations[count] = pDestination;
+				count++;
+			}
+		}
+
+		pEnt = gEntList.FindEntityByName(pEnt, ASSAULT_SPAWN_POINT_NAME);
+	}
+
+	if (count < 1)
+		return NULL;
+
+	// Now find the nearest/farthest based on distance criterion
+	if (m_SpawnType == "random")
+	{
+		// Pretty lame way to pick randomly. Try a few times to find a random
+		// location where a hull can fit. Don't try too many times due to performance
+		// concerns.
+		for (int i = 0; i < 5; i++)
+		{
+			CNPCSpawnDestination* pRandomDest = pDestinations[rand() % count];
+
+			if (HumanHullFits(pRandomDest->GetAbsOrigin()))
+			{
+				return pRandomDest;
+			}
+		}
+
+		return NULL;
+	}
+	else
+	{
+		if (m_SpawnType == "nearest")
+		{
+			float flNearest = FLT_MAX;
+			CNPCSpawnDestination* pNearest = NULL;
+
+			for (int i = 0; i < count; i++)
+			{
+				Vector vecTest = pDestinations[i]->GetAbsOrigin();
+				float flDist = (vecTest - pPlayer->GetAbsOrigin()).Length();
+
+				if (m_fSpawnDistance != 0 && m_fSpawnDistance > flDist)
+					continue;
+
+				if (flDist < flNearest && HumanHullFits(vecTest))
+				{
+					flNearest = flDist;
+					pNearest = pDestinations[i];
+				}
+			}
+
+			return pNearest;
+		}
+		else
+		{
+			float flFarthest = 0;
+			CNPCSpawnDestination* pFarthest = NULL;
+
+			for (int i = 0; i < count; i++)
+			{
+				Vector vecTest = pDestinations[i]->GetAbsOrigin();
+				float flDist = (vecTest - pPlayer->GetAbsOrigin()).Length();
+
+				if (m_fSpawnDistance != 0 && m_fSpawnDistance > flDist)
+					continue;
+
+				if (flDist > flFarthest && HumanHullFits(vecTest))
+				{
+					flFarthest = flDist;
+					pFarthest = pDestinations[i];
+				}
+			}
+
+			return pFarthest;
+		}
+	}
+
+	return NULL;
 }
 
 void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
@@ -212,23 +316,25 @@ void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
 	AssertMsg(m_iNumEnemies >= 0, "logic_assault receiving child death notice but thinks has no children\n");
 
 	// If all enemies in this wave are defeated or there is one member left, proceed to the next wave
-	if (m_iNumEnemies <= 1)
+	if (m_iNumEnemies <= m_iMinEnemiesToEndWave)
 	{
 		// If we beat all three phases, go to the next wave
 		if (m_iPhase > 3)
 		{
 			m_iPhase = 0;
 			m_iNumWave++;
-			m_OnWaveDefeated.FireOutput(this, this);
+			m_OnNextWave.FireOutput(this, this);
+
+			if (m_iNumWave > m_iMaxWaves && !m_bEndlessWaves)
+			{
+				Disable();
+				m_OnAllWavesDefeated.FireOutput(this, this);
+			}
 		}
 		else
 		{
+			// Go to the next phase
 			m_iPhase++;
-			m_OnNextPhase.FireOutput(this, this);
-		}
-		if (!m_bEndlessWaves && m_iNumWave > m_iMaxWaves)
-		{
-			m_OnAllWavesDefeated.FireOutput(this, this);
 		}
 	}
 }
@@ -241,11 +347,11 @@ void CLogicAssault::MakeNPC(void)
 	if (!CanMakeNPC())
 		return;
 
-	CNPCSpawnDestination* pSpawnPoint = GetNearbySpawnPoint();
+	CNPCSpawnDestination* pSpawnPoint = FindSpawnDestination();
 	if (pSpawnPoint == NULL)
 		return;
 
-	CAI_BaseNPC* pent = (CAI_BaseNPC*)CreateEntityByName("npc_combine_s");
+	CAI_BaseNPC* pent = (CAI_BaseNPC*)CreateEntityByName(GetEnemyType());
 
 	if (!pent)
 	{
@@ -380,6 +486,17 @@ void CLogicAssault::ChildPostSpawn(CAI_BaseNPC* pChild)
 
 		bFound = false;
 	}
+}
+
+const char* CLogicAssault::GetEnemyType()
+{
+	if (m_EnemyType == "combine")
+		return "npc_combine_s";
+	if (m_EnemyType == "cops")
+		return "npc_metropolice";
+	if (m_EnemyType == "rebels")
+		return "npc_citizen";
+	return "npc_combine_s";
 }
 
 void CLogicAssault::InputEnable(inputdata_t& inputdata)
