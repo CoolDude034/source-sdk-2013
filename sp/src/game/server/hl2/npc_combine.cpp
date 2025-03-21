@@ -500,12 +500,6 @@ void CNPC_Combine::Spawn( void )
 	}
 	else
 	{
-		// Prevent unarmed soldiers
-		if (m_spawnEquipment == NULL_STRING && !KeyValue("usemarch", "1"))
-		{
-			m_spawnEquipment = AllocPooledString("weapon_smg1");
-		}
-
 		// 25% chance to equip the MP5
 		if (m_spawnEquipment == gm_isz_class_SMG1 && random->RandomFloat() < 0.25F)
 		{
