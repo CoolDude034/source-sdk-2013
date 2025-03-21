@@ -12,6 +12,7 @@
 #include "monstermaker.h"
 #include "mapentities.h"
 #include "logic_assault.h"
+#include "npc_citizen17.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -33,15 +34,31 @@ inline bool GetAssaultSettingsKeyValues(KeyValues* pKeyValues)
 LINK_ENTITY_TO_CLASS(logic_assault, CLogicAssault);
 
 BEGIN_DATADESC(CLogicAssault)
-//DEFINE_KEYFIELD(m_bEndlessWaves, FIELD_BOOLEAN, "EndlessWaves"),
+
+DEFINE_INPUTFUNC(FIELD_VOID, "Enable", InputEnable),
+DEFINE_INPUTFUNC(FIELD_VOID, "Disable", InputDisable),
+DEFINE_INPUTFUNC(FIELD_MODELNAME, "ChangeModel", InputChangeModel),
 
 DEFINE_OUTPUT(m_OnSpawnNPC, "OnSpawnNPC"),
 DEFINE_OUTPUT(m_OnNextWave, "OnNextWave"),
 DEFINE_OUTPUT(m_OnAllWavesDefeated, "OnAllWaveDefeated"),
 END_DATADESC()
 
+static string_t SPAWN_TYPE_RANDOM = AllocPooledString("random");
+static string_t SPAWN_TYPE_NEAREST = AllocPooledString("nearest");
+
 void CLogicAssault::Spawn(void)
 {
+	// Idk, guess this spawns twice or smth
+	/*
+	CBaseEntity* pAssaultLogic = gEntList.FindEntityByClassname(NULL, "logic_assault");
+	if (pAssaultLogic)
+	{
+		Warning("Another logic_assault entity found, there can only be one entity.\n");
+		UTIL_Remove(this);
+		return;
+	}
+	*/
 	m_iNumWave = 1;
 	m_iPhase = 0;
 	KeyValues* assaultdata = new KeyValues("AssaultWaveData");
@@ -52,29 +69,50 @@ void CLogicAssault::Spawn(void)
 		m_iMaxEnemiesPerWave = assaultdata->GetInt("MaxEnemiesPerWave", 4);
 		m_iMaxWaves = assaultdata->GetInt("MaxWaves", 5);
 		m_iMinEnemiesToEndWave = assaultdata->GetInt("MinEnemiesToEndWave", 1);
-		m_EnemyType = assaultdata->GetString("EnemyType", "combine");
-		m_EnemyModel = assaultdata->GetString("EnemyModel", "models/combine_soldier.mdl");
+		m_EnemyType = AllocPooledString(assaultdata->GetString("EnemyType", "combine"));
+		m_EnemyModel = AllocPooledString(assaultdata->GetString("EnemyModel", "models/combine_soldier.mdl"));
 		m_fShotgunChance = assaultdata->GetFloat("ShotgunChance", 0.25F);
 		m_fAR2Chance = assaultdata->GetFloat("AR2Chance", 0.15F);
 		m_fGrenadeChance = assaultdata->GetFloat("GrenadeChance", 0.25F);
 		m_fEnemyCitizenMedicChance = assaultdata->GetFloat("MedicChance", 0.15F);
-		m_TacticalVariant = assaultdata->GetString("TacticalVariant", "2");
+		m_iTacticalVariant = assaultdata->GetInt("TacticalVariant", 2);
 		m_flSpawnFrequency = assaultdata->GetFloat("SpawnFrequency", 0.1F);
-		m_SpawnType = assaultdata->GetString("SpawnType", "random");
-		m_fSpawnDistance = assaultdata->GetFloat("SpawnDistance", 0.1F);
+		m_SpawnType = AllocPooledString(assaultdata->GetString("SpawnType", "random"));
+		m_fSpawnDistance = assaultdata->GetFloat("SpawnDistance", 400.0F);
+		m_bShouldUpdateEnemies = assaultdata->GetBool("ShouldUpdateEnemies", true);
 
 		assaultdata->deleteThis();
 	}
-	RunScriptFile("assault_wave_manager"); // Run the assault_wave_manager VScript
-	if (!m_bDisabled)
-	{
-		SetThink(&CLogicAssault::AssaultThink);
-		SetNextThink(gpGlobals->curtime + 0.1f);
-	}
 	else
+	{
+		Warning("logic_assault failed to set assault properties. Is the scripts intact?\n");
+		m_bEndlessWaves = true;
+		m_iMaxEnemies = 8;
+		m_iMaxEnemiesPerWave = 4;
+		m_iMaxWaves = 5;
+		m_iMinEnemiesToEndWave = 1;
+		m_EnemyType = AllocPooledString("combine");
+		m_EnemyModel = AllocPooledString("models/combine_soldier.mdl");
+		m_fShotgunChance = 0.25F;
+		m_fAR2Chance = 0.15F;
+		m_fGrenadeChance = 0.25F;
+		m_fEnemyCitizenMedicChance = 0.15F;
+		m_iTacticalVariant = 2;
+		m_flSpawnFrequency = 0.1F;
+		m_SpawnType = AllocPooledString("random");
+		m_fSpawnDistance = 400.0F;
+		m_bShouldUpdateEnemies = true;
+	}
+	RunScriptFile("assault_wave_manager"); // Run the assault_wave_manager VScript
+	if (m_bDisabled)
 	{
 		//wait to be activated.
 		SetThink(&CLogicAssault::SUB_DoNothing);
+	}
+	else
+	{
+		SetThink(&CLogicAssault::AssaultThink);
+		SetNextThink(gpGlobals->curtime + 0.1f);
 	}
 }
 
@@ -109,7 +147,7 @@ bool CLogicAssault::HumanHullFits(const Vector& vecLocation)
 //-----------------------------------------------------------------------------
 // Purpose: Returns whether or not it is OK to make an NPC at this instant.
 //-----------------------------------------------------------------------------
-bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CBaseEntity* m_hIgnoreEntity)
+bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities)
 {
 	if (m_iNumEnemies >= m_iMaxEnemies)
 	{
@@ -146,7 +184,7 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CBaseEntity* m_hIgnore
 						NAI_Hull::Mins(HULL_HUMAN),
 						NAI_Hull::Maxs(HULL_HUMAN),
 						MASK_NPCSOLID,
-						m_hIgnoreEntity,
+						NULL,
 						COLLISION_GROUP_NONE,
 						&tr);
 
@@ -239,7 +277,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 		return NULL;
 
 	// Now find the nearest/farthest based on distance criterion
-	if (m_SpawnType == "random")
+	if (m_SpawnType == SPAWN_TYPE_RANDOM)
 	{
 		// Pretty lame way to pick randomly. Try a few times to find a random
 		// location where a hull can fit. Don't try too many times due to performance
@@ -258,7 +296,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 	}
 	else
 	{
-		if (m_SpawnType == "nearest")
+		if (m_SpawnType == SPAWN_TYPE_NEAREST)
 		{
 			float flNearest = FLT_MAX;
 			CNPCSpawnDestination* pNearest = NULL;
@@ -323,7 +361,9 @@ void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
 		{
 			m_iPhase = 0;
 			m_iNumWave++;
-			m_OnNextWave.FireOutput(this, this);
+			variant_t variant;
+			variant.SetInt(m_iNumWave);
+			m_OnNextWave.FireOutput(variant, this, this);
 
 			if (m_iNumWave > m_iMaxWaves && !m_bEndlessWaves)
 			{
@@ -374,14 +414,24 @@ void CLogicAssault::MakeNPC(void)
 
 	if (pent->ClassMatches("npc_combine_s"))
 	{
-		pent->SetModelName(AllocPooledString(m_EnemyModel));
-		if (m_TacticalVariant == "0" || m_TacticalVariant == "1" || m_TacticalVariant == "2" || m_TacticalVariant == "3")
+		pent->SetModelName(m_EnemyModel);
+		switch (m_iTacticalVariant)
 		{
-			pent->KeyValue("tacticalvariant", m_TacticalVariant);
-		}
-		else
-		{
+		case 0:
+			pent->KeyValue("tacticalvariant", "0");
+			break;
+		case 1:
 			pent->KeyValue("tacticalvariant", "1");
+			break;
+		case 2:
+			pent->KeyValue("tacticalvariant", "2");
+			break;
+		case 3:
+			pent->KeyValue("tacticalvariant", "3");
+			break;
+		default:
+			pent->KeyValue("tacticalvariant", "1");
+			break;
 		}
 		if (random->RandomFloat() < m_fShotgunChance)
 		{
@@ -412,6 +462,10 @@ void CLogicAssault::MakeNPC(void)
 	{
 		pent->AddSpawnFlags(262144); // Random head
 		pent->KeyValue("citizentype", "3"); // Rebel Citizen
+		if (random->RandomFloat() < m_fEnemyCitizenMedicChance)
+		{
+			pent->AddSpawnFlags(131072); // Chance for Enemy Medic
+		}
 		if (random->RandomFloat() < m_fShotgunChance)
 		{
 			pent->m_spawnEquipment = AllocPooledString("weapon_shotgun");
@@ -420,14 +474,16 @@ void CLogicAssault::MakeNPC(void)
 		{
 			pent->m_spawnEquipment = AllocPooledString("weapon_smg1");
 		}
+		CNPC_Citizen* pCitizen = dynamic_cast<CNPC_Citizen*>(pent);
+		if (pCitizen)
+		{
+			// this is bad practice but i don't know anymore...
+			pCitizen->m_bIsRaider = true;
+		}
 	}
 	if (random->RandomFloat() < m_fGrenadeChance)
 	{
 		pent->KeyValue("NumGrenades", "5");
-	}
-	if (random->RandomFloat() < m_fEnemyCitizenMedicChance)
-	{
-		pent->AddSpawnFlags(131072); // Medic
 	}
 	pent->AddSpawnFlags(1024); // Think outside of PVS
 	pent->SetSquadName(AllocPooledString("squad_assault_group"));
@@ -437,10 +493,13 @@ void CLogicAssault::MakeNPC(void)
 	pent->SetOwnerEntity(this);
 	ChildPostSpawn(pent);
 
-	CBasePlayer* pPlayer = UTIL_GetLocalPlayer();
-	if (pPlayer)
+	if (m_bShouldUpdateEnemies)
 	{
-		pent->UpdateEnemyMemory(NULL, pPlayer->GetAbsOrigin());
+		CBasePlayer* pPlayer = UTIL_GetLocalPlayer();
+		if (pPlayer)
+		{
+			pent->UpdateEnemyMemory(NULL, pPlayer->GetAbsOrigin());
+		}
 	}
 
 	m_iNumEnemies++;// count this NPC
@@ -488,15 +547,24 @@ void CLogicAssault::ChildPostSpawn(CAI_BaseNPC* pChild)
 	}
 }
 
+static string_t CombineGroup = AllocPooledString("combine");
+static string_t CombineGroup2 = AllocPooledString("cops");
+static string_t RebelGroup = AllocPooledString("rebels");
+
 const char* CLogicAssault::GetEnemyType()
 {
-	if (m_EnemyType == "combine")
+	if (m_EnemyType == CombineGroup)
 		return "npc_combine_s";
-	if (m_EnemyType == "cops")
+	if (m_EnemyType == CombineGroup2)
 		return "npc_metropolice";
-	if (m_EnemyType == "rebels")
+	if (m_EnemyType == RebelGroup)
 		return "npc_citizen";
 	return "npc_combine_s";
+}
+
+bool CLogicAssault::KeyValue(const char* szKeyName, const char* szValue)
+{
+	return BaseClass::KeyValue(szKeyName, szValue);
 }
 
 void CLogicAssault::InputEnable(inputdata_t& inputdata)
@@ -507,5 +575,10 @@ void CLogicAssault::InputEnable(inputdata_t& inputdata)
 void CLogicAssault::InputDisable(inputdata_t& inputdata)
 {
 	Disable();
+}
+
+void CLogicAssault::InputChangeModel(inputdata_t& inputdata)
+{
+	m_EnemyType = AllocPooledString(inputdata.value.String());
 }
 
