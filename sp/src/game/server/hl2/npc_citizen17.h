@@ -285,6 +285,8 @@ public:
 	void			SetCitizenType( int iType ) { m_Type = (CitizenType_t)iType; }
 #endif
 
+	bool			m_bIsRaider; // marks this citizen as a pillager uh i mean hostile rebel participating in waves spawned by logic_assault
+
 private:
 	//-----------------------------------------------------
 	// Conditions, Schedules, Tasks
