@@ -42,6 +42,7 @@ DEFINE_INPUTFUNC(FIELD_MODELNAME, "ChangeModel", InputChangeModel),
 DEFINE_OUTPUT(m_OnSpawnNPC, "OnSpawnNPC"),
 DEFINE_OUTPUT(m_OnNextWave, "OnNextWave"),
 DEFINE_OUTPUT(m_OnAllWavesDefeated, "OnAllWaveDefeated"),
+DEFINE_OUTPUT(m_OnAssaultStart, "OnAssaultStart"),
 END_DATADESC()
 
 static string_t SPAWN_TYPE_RANDOM = AllocPooledString("random");
@@ -66,7 +67,6 @@ void CLogicAssault::Spawn(void)
 	{
 		m_bEndlessWaves = assaultdata->GetBool("EndlessWaves", true);
 		m_iMaxEnemies = assaultdata->GetInt("MaxEnemies", 8);
-		m_iMaxEnemiesPerWave = assaultdata->GetInt("MaxEnemiesPerWave", 4);
 		m_iMaxWaves = assaultdata->GetInt("MaxWaves", 5);
 		m_iMinEnemiesToEndWave = assaultdata->GetInt("MinEnemiesToEndWave", 1);
 		m_EnemyType = AllocPooledString(assaultdata->GetString("EnemyType", "combine"));
@@ -77,9 +77,28 @@ void CLogicAssault::Spawn(void)
 		m_fEnemyCitizenMedicChance = assaultdata->GetFloat("MedicChance", 0.15F);
 		m_iTacticalVariant = assaultdata->GetInt("TacticalVariant", 2);
 		m_flSpawnFrequency = assaultdata->GetFloat("SpawnFrequency", 0.1F);
+		m_flTimeUntilNextWave = assaultdata->GetFloat("TimeUntilNextWave", 1.0F);
 		m_SpawnType = AllocPooledString(assaultdata->GetString("SpawnType", "random"));
 		m_fSpawnDistance = assaultdata->GetFloat("SpawnDistance", 400.0F);
 		m_bShouldUpdateEnemies = assaultdata->GetBool("ShouldUpdateEnemies", true);
+
+		KeyValues* pSpawnData = assaultdata->FindKey("SpawnData");
+		if (pSpawnData)
+		{
+			for (int i = 0; i < 16; i++)
+			{
+				CNPCSpawnDestination* pSpawn = dynamic_cast<CNPCSpawnDestination*>(CreateEntityByName("info_npc_spawn_destination"));
+				if (pSpawn)
+				{
+					float x = pSpawnData->GetFloat("x", 0.0F);
+					float y = pSpawnData->GetFloat("y", 0.0F);
+					float z = pSpawnData->GetFloat("z", 0.0F);
+					pSpawn->SetAbsOrigin(Vector(x, y, z));
+					pSpawn->SetAbsAngles(QAngle());
+					pSpawn->Spawn();
+				}
+			}
+		}
 
 		assaultdata->deleteThis();
 	}
@@ -88,7 +107,6 @@ void CLogicAssault::Spawn(void)
 		Warning("logic_assault failed to set assault properties. Is the scripts intact?\n");
 		m_bEndlessWaves = true;
 		m_iMaxEnemies = 8;
-		m_iMaxEnemiesPerWave = 4;
 		m_iMaxWaves = 5;
 		m_iMinEnemiesToEndWave = 1;
 		m_EnemyType = AllocPooledString("combine");
@@ -99,11 +117,13 @@ void CLogicAssault::Spawn(void)
 		m_fEnemyCitizenMedicChance = 0.15F;
 		m_iTacticalVariant = 2;
 		m_flSpawnFrequency = 0.1F;
+		m_flTimeUntilNextWave = 1.0F;
 		m_SpawnType = AllocPooledString("random");
 		m_fSpawnDistance = 400.0F;
 		m_bShouldUpdateEnemies = true;
 	}
-	RunScriptFile("assault_wave_manager"); // Run the assault_wave_manager VScript
+	// Run the assault_wave_manager VScript
+	RunScriptFile("assault_wave_manager");
 	if (m_bDisabled)
 	{
 		//wait to be activated.
@@ -114,6 +134,11 @@ void CLogicAssault::Spawn(void)
 		SetThink(&CLogicAssault::AssaultThink);
 		SetNextThink(gpGlobals->curtime + 0.1f);
 	}
+}
+
+void CLogicAssault::Precache(void)
+{
+	PrecacheModel(m_EnemyModel.ToCStr());
 }
 
 void CLogicAssault::AssaultThink(void)
@@ -364,6 +389,7 @@ void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
 			variant_t variant;
 			variant.SetInt(m_iNumWave);
 			m_OnNextWave.FireOutput(variant, this, this);
+			SetNextThink(gpGlobals->curtime + m_flTimeUntilNextWave);
 
 			if (m_iNumWave > m_iMaxWaves && !m_bEndlessWaves)
 			{
@@ -508,6 +534,11 @@ void CLogicAssault::MakeNPC(void)
 void CLogicAssault::Enable(void)
 {
 	m_bDisabled = false;
+	if (!m_bIsAssaultActivated)
+	{
+		m_bIsAssaultActivated = true;
+		m_OnAssaultStart.FireOutput(this, this);
+	}
 	if (m_iNumWave == 0)
 	{
 		m_iNumWave = 1;
