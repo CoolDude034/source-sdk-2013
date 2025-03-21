@@ -57,7 +57,12 @@ void CActualBullet::Think(void)
 		info2.m_flDistance = flDist;
 		info2.m_iAmmoType = info.m_iAmmoType;
 		info2.m_iTracerFreq = 0;
-		GetOwnerEntity()->FireBullets(info2);
+		// BUGFIX: Unhandled exception at 0x24251E78 (server.dll) in crash_hl2.exe_20250321012557_1.dmp: 0xC0000005: Access violation reading location 0x00000000.
+		CBaseEntity* pOwner = GetOwnerEntity();
+		if (pOwner != NULL)
+		{
+			pOwner->FireBullets(info2);
+		}
 		Stop();
 	}
 	else
