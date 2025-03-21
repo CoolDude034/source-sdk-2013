@@ -25,6 +25,7 @@ STUB_WEAPON_CLASS( weapon_citizenpackage, WeaponCitizenPackage, C_BaseHLCombatWe
 STUB_WEAPON_CLASS( weapon_citizensuitcase, WeaponCitizenSuitcase, C_WeaponCitizenPackage );
 STUB_WEAPON_CLASS(weapon_glock18, WeaponGlock18, C_BaseHLCombatWeapon);
 STUB_WEAPON_CLASS(weapon_mp5, WeaponMP5, C_HLSelectFireMachineGun);
+STUB_WEAPON_CLASS(weapon_remington870, WeaponShotgun, C_BaseHLCombatWeapon);
 //STUB_WEAPON_CLASS(weapon_sniperrifle, WeaponSniperRifle, C_HLSelectFireMachineGun); // TODO: Maybe add a sniper rifle?
 
 #ifndef HL2MP
