@@ -298,7 +298,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 		{
 			CNPCSpawnDestination* pRandomDest = pDestinations[rand() % count];
 
-			if (HumanHullFits(pRandomDest->GetAbsOrigin(), pRandomDest))
+			if (HumanHullFits(pRandomDest->GetAbsOrigin(), NULL))
 			{
 				return pRandomDest;
 			}
