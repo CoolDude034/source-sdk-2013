@@ -350,7 +350,7 @@ const char* CWeaponShotgun::GetWorldModel() const
 
 const char* CWeaponShotgun::GetViewModel() const
 {
-	if (m_bIsRemington870)
+	if (m_bIsRemington870 || GetOwner() != NULL && GetOwner()->Classify() == CLASS_COMBINE && GetOwner()->NameMatches("remington_unit_*"))
 		return "models/weapons/v_remington870.mdl";
 	return BaseClass::GetViewModel();
 }
