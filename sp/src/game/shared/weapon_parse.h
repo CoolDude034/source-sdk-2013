@@ -119,7 +119,6 @@ public:
 	QAngle					angIronsightAngOffset;
 	float					flIronsightFOVOffset;
 	bool					bPlayIronSightSounds;
-	bool					bHasIronSights;
 
 	// Sound blocks
 	char					aShootSounds[NUM_SHOOT_SOUND_TYPES][MAX_WEAPON_STRING];	
