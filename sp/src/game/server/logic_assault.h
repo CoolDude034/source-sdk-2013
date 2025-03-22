@@ -12,8 +12,8 @@ public:
 	void Precache(void);
 	void AssaultThink(void);
 	void SUB_DoNothing(void) {};
-	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity);
-	bool CanMakeNPC(bool bIgnoreSolidEntities = false);
+	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity = NULL);
+	bool CanMakeNPC(bool bIgnoreSolidEntities = false, CNPCSpawnDestination* pSpawnPoint = NULL);
 	CNPCSpawnDestination* FindSpawnDestination();
 	void DeathNotice(CBaseEntity* pChild);
 	void MakeNPC(void);
