@@ -98,7 +98,8 @@ static ConCommand toggle_ironsight("toggle_ironsight", CC_ToggleIronSights);
 
 extern ConVar sv_enable_hitscan_weapons;
 
-ConVar sk_bullet_speed("sk_bullet_speed", "12000");
+// Bullet travel time
+ConVar sk_bullet_speed("sk_bullet_speed", "2500");
 
 CBaseCombatWeapon::CBaseCombatWeapon()
 {
@@ -119,7 +120,7 @@ CBaseCombatWeapon::CBaseCombatWeapon()
 	m_bFlipViewModel	= false;
 
 	// Setup iron-sight variables
-	m_bIsIronsighted = GetWpnData().bHasIronSights;
+	m_bIsIronsighted = false;
 	m_flIronsightedTime = 0.0f;
 
 #if defined( CLIENT_DLL )
