@@ -48,6 +48,10 @@ END_DATADESC()
 static string_t SPAWN_TYPE_RANDOM = AllocPooledString("random");
 static string_t SPAWN_TYPE_NEAREST = AllocPooledString("nearest");
 
+CLogicAssault::CLogicAssault()
+{
+}
+
 void CLogicAssault::Spawn(void)
 {
 	// Idk, guess this spawns twice or smth
@@ -62,6 +66,7 @@ void CLogicAssault::Spawn(void)
 	*/
 	m_iNumWave = 1;
 	m_iPhase = 0;
+	m_bDisabled = true;
 	KeyValues* assaultdata = new KeyValues("AssaultWaveData");
 	if (GetAssaultSettingsKeyValues(assaultdata))
 	{
@@ -81,24 +86,6 @@ void CLogicAssault::Spawn(void)
 		m_SpawnType = AllocPooledString(assaultdata->GetString("SpawnType", "random"));
 		m_fSpawnDistance = assaultdata->GetFloat("SpawnDistance", 400.0F);
 		m_bShouldUpdateEnemies = assaultdata->GetBool("ShouldUpdateEnemies", true);
-
-		KeyValues* pSpawnData = assaultdata->FindKey("SpawnData");
-		if (pSpawnData)
-		{
-			for (int i = 0; i < 16; i++)
-			{
-				CNPCSpawnDestination* pSpawn = dynamic_cast<CNPCSpawnDestination*>(CreateEntityByName("info_npc_spawn_destination"));
-				if (pSpawn)
-				{
-					float x = pSpawnData->GetFloat("x", 0.0F);
-					float y = pSpawnData->GetFloat("y", 0.0F);
-					float z = pSpawnData->GetFloat("z", 0.0F);
-					pSpawn->SetAbsOrigin(Vector(x, y, z));
-					pSpawn->SetAbsAngles(QAngle());
-					pSpawn->Spawn();
-				}
-			}
-		}
 
 		assaultdata->deleteThis();
 	}
@@ -151,7 +138,7 @@ void CLogicAssault::AssaultThink(void)
 // A not-very-robust check to see if a human hull could fit at this location.
 // used to validate spawn destinations.
 //-----------------------------------------------------------------------------
-bool CLogicAssault::HumanHullFits(const Vector& vecLocation)
+bool CLogicAssault::HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity)
 {
 	trace_t tr;
 	UTIL_TraceHull(vecLocation,
@@ -159,7 +146,7 @@ bool CLogicAssault::HumanHullFits(const Vector& vecLocation)
 		NAI_Hull::Mins(HULL_HUMAN),
 		NAI_Hull::Maxs(HULL_HUMAN),
 		MASK_NPCSOLID,
-		NULL,
+		pIgnoreEntity,
 		COLLISION_GROUP_NONE,
 		&tr);
 
@@ -209,11 +196,11 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities)
 						NAI_Hull::Mins(HULL_HUMAN),
 						NAI_Hull::Maxs(HULL_HUMAN),
 						MASK_NPCSOLID,
-						NULL,
+						pList[i],
 						COLLISION_GROUP_NONE,
 						&tr);
 
-					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1)))
+					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1), pList[i]))
 					{
 						return false;
 					}
@@ -311,7 +298,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 		{
 			CNPCSpawnDestination* pRandomDest = pDestinations[rand() % count];
 
-			if (HumanHullFits(pRandomDest->GetAbsOrigin()))
+			if (HumanHullFits(pRandomDest->GetAbsOrigin(), pRandomDest))
 			{
 				return pRandomDest;
 			}
@@ -334,7 +321,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 				if (m_fSpawnDistance != 0 && m_fSpawnDistance > flDist)
 					continue;
 
-				if (flDist < flNearest && HumanHullFits(vecTest))
+				if (flDist < flNearest && HumanHullFits(vecTest, NULL))
 				{
 					flNearest = flDist;
 					pNearest = pDestinations[i];
@@ -356,7 +343,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 				if (m_fSpawnDistance != 0 && m_fSpawnDistance > flDist)
 					continue;
 
-				if (flDist > flFarthest && HumanHullFits(vecTest))
+				if (flDist > flFarthest && HumanHullFits(vecTest, NULL))
 				{
 					flFarthest = flDist;
 					pFarthest = pDestinations[i];
@@ -421,7 +408,7 @@ void CLogicAssault::MakeNPC(void)
 
 	if (!pent)
 	{
-		Warning("NULL Ent in NPCMaker!\n");
+		Warning("logic_assault failed to create NPC!\n");
 		return;
 	}
 
