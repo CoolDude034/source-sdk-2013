@@ -48,7 +48,7 @@ public:
 	virtual void	Equip(CBaseCombatCharacter* pOwner);
 	bool			Reload();
 
-	float			GetFireRate() { return 0.075f; } // RPS, 60sec/800 rounds = 0.075
+	float			GetFireRate() { return 0.5f; } // RPS, 5sec/1 round = 0.5
 	int				CapabilitiesGet() { return bits_CAP_WEAPON_RANGE_ATTACK1; }
 	int				WeaponRangeAttack2Condition(float flDot, float flDist);
 	Activity		GetPrimaryAttackActivity();
