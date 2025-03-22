@@ -37,9 +37,12 @@ void CActualBullet::Think(void)
 	Vector vecEnd;
 	float flInterval;
 
+	ConVar* host_timescale = cvar->FindVar("host_timescale");
+	float bulletTravelSpeed = host_timescale->GetInt() != 1 && host_timescale->GetInt() || m_Speed;
+
 	flInterval = gpGlobals->curtime - GetLastThink();
 	vecStart = GetAbsOrigin();
-	vecEnd = vecStart + (m_vecDir * (m_Speed * flInterval));
+	vecEnd = vecStart + (m_vecDir * (bulletTravelSpeed * flInterval));
 	float flDist = (vecStart - vecEnd).Length();
 
 	trace_t tr;
