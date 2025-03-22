@@ -89,6 +89,8 @@ public:
 	int				GetBackupActivityListCount() { return 0; }
 #endif
 
+	virtual bool			HasIronsights(void) { return false; }
+
 	CWeaponStunStick( const CWeaponStunStick & );
 
 private:
