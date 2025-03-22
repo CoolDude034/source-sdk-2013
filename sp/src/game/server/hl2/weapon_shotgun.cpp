@@ -110,12 +110,6 @@ BEGIN_DATADESC( CWeaponShotgun )
 
 END_DATADESC()
 
-class CWeaponRemington870 : public CWeaponShotgun
-{
-};
-
-LINK_ENTITY_TO_CLASS(weapon_remington870, CWeaponRemington870);
-
 acttable_t	CWeaponShotgun::m_acttable[] = 
 {
 #if EXPANDED_HL2_WEAPON_ACTIVITIES
