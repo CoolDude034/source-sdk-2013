@@ -38,7 +38,7 @@ void CActualBullet::Think(void)
 	float flInterval;
 
 	ConVar* host_timescale = cvar->FindVar("host_timescale");
-	float bulletTravelSpeed = host_timescale->GetInt() != 1 && host_timescale->GetInt() || m_Speed;
+	float bulletTravelSpeed = m_Speed * host_timescale->GetFloat();
 
 	flInterval = gpGlobals->curtime - GetLastThink();
 	vecStart = GetAbsOrigin();
