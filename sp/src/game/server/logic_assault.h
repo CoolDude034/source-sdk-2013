@@ -29,7 +29,9 @@ private:
 
 	bool m_bDisabled;
 	bool m_bEndlessWaves; // if enabled, the m_iMaxWaves value is ignored and waves go on and on
-	int m_iNumEnemies; // num enemies in a wave to keep track of
+	int m_iNumEnemies; // total enemies, counts each NPC spawned and killed
+	int m_iMinEnemiesToKillToProgress; // number of enemies to kill to advance the wave
+	int m_iMinEnemiesToKillToProgressCounter; // the counter for the above
 	int m_iNumWave; // the wave number to keep track of, when spawning enemy squads
 	int m_iMaxWaves; // the maximum number of waves the assault will have
 	int m_iPhase; // the phase of this wave, each wave has three phases before proceeding to the next wave and resetting this value
