@@ -91,6 +91,10 @@ public:
 	void Operator_ForceNPCFire( CBaseCombatCharacter  *pOperator, bool bSecondary );
 	void Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
 
+	bool m_bIsRemington870;
+	const char* GetWorldModel() const;
+	const char* GetViewModel() const;
+
 	DECLARE_ACTTABLE();
 
 	CWeaponShotgun(void);
@@ -107,6 +111,8 @@ BEGIN_DATADESC( CWeaponShotgun )
 	DEFINE_FIELD( m_bNeedPump, FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_bDelayedFire1, FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_bDelayedFire2, FIELD_BOOLEAN ),
+
+	DEFINE_KEYFIELD(m_bIsRemington870, FIELD_BOOLEAN, "IsRemington870"),
 
 END_DATADESC()
 
@@ -333,6 +339,20 @@ void CWeaponShotgun::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatC
 			CBaseCombatWeapon::Operator_HandleAnimEvent( pEvent, pOperator );
 			break;
 	}
+}
+
+const char* CWeaponShotgun::GetWorldModel() const
+{
+	if (m_bIsRemington870)
+		return "models/weapons/w_remington870.mdl";
+	return BaseClass::GetWorldModel();
+}
+
+const char* CWeaponShotgun::GetViewModel() const
+{
+	if (m_bIsRemington870)
+		return "models/weapons/v_remington870.mdl";
+	return BaseClass::GetViewModel();
 }
 
 
