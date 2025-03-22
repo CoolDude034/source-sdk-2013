@@ -2824,10 +2824,6 @@ void CBaseCombatWeapon::PrimaryAttack( void )
 #if !defined( CLIENT_DLL )
 	// Fire the bullets
 	info.m_vecSpread = pPlayer->GetAttackSpread( this );
-#else
-	//!!!HACKHACK - what does the client want this function for? 
-	info.m_vecSpread = GetActiveWeapon()->GetBulletSpread();
-#endif // CLIENT_DLL
 
 	// Actual Bullets
 	if (sv_enable_hitscan_weapons.GetBool())
@@ -2846,6 +2842,10 @@ void CBaseCombatWeapon::PrimaryAttack( void )
 
 		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
 	}
+#else
+	//!!!HACKHACK - what does the client want this function for? 
+	info.m_vecSpread = GetActiveWeapon()->GetBulletSpread();
+#endif // CLIENT_DLL
 
 	if (!m_iClip1 && pPlayer->GetAmmoCount(m_iPrimaryAmmoType) <= 0)
 	{
