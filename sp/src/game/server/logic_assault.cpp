@@ -130,8 +130,42 @@ void CLogicAssault::Precache(void)
 
 void CLogicAssault::AssaultThink(void)
 {
+	if (m_bDisabled) return;
+	if (m_iNumEnemies < m_iMaxEnemies && m_iNumWave <= m_iMaxWaves)
+	{
+		MakeNPC();
+	}
+
+	if (m_iNumEnemies <= m_iMinEnemiesToEndWave)
+	{
+		// If we beat all three phases, go to the next wave
+		if (m_iPhase > 3)
+		{
+			m_iPhase = 0;
+			m_iNumWave++;
+			variant_t variant;
+			variant.SetInt(m_iNumWave);
+			m_OnNextWave.FireOutput(variant, this, this);
+
+			// If all waves are complete and not endless, end the assault
+			if (m_iNumWave > m_iMaxWaves && !m_bEndlessWaves)
+			{
+				m_OnAllWavesDefeated.FireOutput(this, this);
+				Disable();
+				return;
+			}
+
+			SetNextThink(gpGlobals->curtime + m_flTimeUntilNextWave);
+			return;
+		}
+		else
+		{
+			// Go to the next phase
+			m_iPhase++;
+		}
+	}
+
 	SetNextThink(gpGlobals->curtime + m_flSpawnFrequency);
-	MakeNPC();
 }
 
 //-----------------------------------------------------------------------------
@@ -159,16 +193,16 @@ bool CLogicAssault::HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnor
 //-----------------------------------------------------------------------------
 // Purpose: Returns whether or not it is OK to make an NPC at this instant.
 //-----------------------------------------------------------------------------
-bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities)
+bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CNPCSpawnDestination* pSpawnPoint)
 {
-	if (m_iNumEnemies >= m_iMaxEnemies)
+	if (m_iNumEnemies > m_iMaxEnemies)
 	{
 		return false;
 	}
 
-	Vector mins = GetAbsOrigin() - Vector(34, 34, 0);
-	Vector maxs = GetAbsOrigin() + Vector(34, 34, 0);
-	maxs.z = GetAbsOrigin().z;
+	Vector mins = pSpawnPoint->GetAbsOrigin() - Vector(34, 34, 0);
+	Vector maxs = pSpawnPoint->GetAbsOrigin() + Vector(34, 34, 0);
+	maxs.z = pSpawnPoint->GetAbsOrigin().z;
 
 	// If we care about not hitting solid entities, look for 'em
 	if (!bIgnoreSolidEntities)
@@ -196,11 +230,11 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities)
 						NAI_Hull::Mins(HULL_HUMAN),
 						NAI_Hull::Maxs(HULL_HUMAN),
 						MASK_NPCSOLID,
-						pList[i],
+						pSpawnPoint,
 						COLLISION_GROUP_NONE,
 						&tr);
 
-					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1), pList[i]))
+					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1), pSpawnPoint))
 					{
 						return false;
 					}
@@ -216,11 +250,11 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities)
 		if (pPlayer)
 		{
 			// Only spawn if the player's looking away from me
-			if (pPlayer->FInViewCone(GetAbsOrigin()) && pPlayer->FVisible(GetAbsOrigin()))
+			if (pPlayer->FInViewCone(pSpawnPoint->GetAbsOrigin()) && pPlayer->FVisible(pSpawnPoint->GetAbsOrigin()))
 			{
-				if (!(pPlayer->GetFlags() & FL_NOTARGET))
-					return false;
-				DevMsg(2, "logic_assault spawning even though seen due to notarget\n");
+				if ((pPlayer->GetFlags() & FL_NOTARGET))
+					return true;
+				return false;
 			}
 		}
 	}
@@ -364,32 +398,6 @@ void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
 
 	// If we're here, we're getting erroneous death messages from children we haven't created
 	AssertMsg(m_iNumEnemies >= 0, "logic_assault receiving child death notice but thinks has no children\n");
-
-	// If all enemies in this wave are defeated or there is one member left, proceed to the next wave
-	if (m_iNumEnemies <= m_iMinEnemiesToEndWave)
-	{
-		// If we beat all three phases, go to the next wave
-		if (m_iPhase > 3)
-		{
-			m_iPhase = 0;
-			m_iNumWave++;
-			variant_t variant;
-			variant.SetInt(m_iNumWave);
-			m_OnNextWave.FireOutput(variant, this, this);
-			SetNextThink(gpGlobals->curtime + m_flTimeUntilNextWave);
-
-			if (m_iNumWave > m_iMaxWaves && !m_bEndlessWaves)
-			{
-				Disable();
-				m_OnAllWavesDefeated.FireOutput(this, this);
-			}
-		}
-		else
-		{
-			// Go to the next phase
-			m_iPhase++;
-		}
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -397,11 +405,11 @@ void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
 //-----------------------------------------------------------------------------
 void CLogicAssault::MakeNPC(void)
 {
-	if (!CanMakeNPC())
-		return;
-
 	CNPCSpawnDestination* pSpawnPoint = FindSpawnDestination();
 	if (pSpawnPoint == NULL)
+		return;
+
+	if (!CanMakeNPC(false, pSpawnPoint))
 		return;
 
 	CAI_BaseNPC* pent = (CAI_BaseNPC*)CreateEntityByName(GetEnemyType());
@@ -526,7 +534,7 @@ void CLogicAssault::Enable(void)
 		m_bIsAssaultActivated = true;
 		m_OnAssaultStart.FireOutput(this, this);
 	}
-	if (m_iNumWave == 0)
+	if (m_iNumWave <= 0)
 	{
 		m_iNumWave = 1;
 	}
@@ -537,6 +545,8 @@ void CLogicAssault::Enable(void)
 void CLogicAssault::Disable(void)
 {
 	m_bDisabled = true;
+	m_iNumWave = 1;
+	m_iPhase = 0;
 	SetThink(NULL);
 }
 
@@ -599,4 +609,3 @@ void CLogicAssault::InputChangeModel(inputdata_t& inputdata)
 {
 	m_EnemyType = AllocPooledString(inputdata.value.String());
 }
-
