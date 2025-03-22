@@ -12,7 +12,7 @@ public:
 	void Precache(void);
 	void AssaultThink(void);
 	void SUB_DoNothing(void) {};
-	bool HumanHullFits(const Vector& vecLocation);
+	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity);
 	bool CanMakeNPC(bool bIgnoreSolidEntities = false);
 	CNPCSpawnDestination* FindSpawnDestination();
 	void DeathNotice(CBaseEntity* pChild);
