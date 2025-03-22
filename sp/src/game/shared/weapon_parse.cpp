@@ -557,12 +557,10 @@ void FileWeaponInfo_t::Parse( KeyValues *pKeyValuesData, const char *szWeaponNam
 
 		flIronsightFOVOffset = pSights->GetFloat("fov", 0.0f);
 
-		bPlayIronSightSounds = pSights->GetBool("playironsightsounds", false);
-		bHasIronSights = true;
+		bPlayIronSightSounds = pSights->GetBool("playironsightsounds", true);
 	}
 	else
 	{
-		bHasIronSights = false;
 		vecIronsightPosOffset = vec3_origin;
 		angIronsightAngOffset.Init();
 		flIronsightFOVOffset = 0.0f;
