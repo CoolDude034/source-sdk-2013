@@ -72,6 +72,7 @@ void CLogicAssault::Spawn(void)
 	{
 		m_bEndlessWaves = assaultdata->GetBool("EndlessWaves", true);
 		m_iMaxEnemies = assaultdata->GetInt("MaxEnemies", 8);
+		m_iMinEnemiesToKillToProgress = assaultdata->GetInt("MinEnemiesToKillToProgress", 8);
 		m_iMaxWaves = assaultdata->GetInt("MaxWaves", 5);
 		m_iMinEnemiesToEndWave = assaultdata->GetInt("MinEnemiesToEndWave", 1);
 		m_EnemyType = AllocPooledString(assaultdata->GetString("EnemyType", "combine"));
@@ -94,6 +95,7 @@ void CLogicAssault::Spawn(void)
 		Warning("logic_assault failed to set assault properties. Is the scripts intact?\n");
 		m_bEndlessWaves = true;
 		m_iMaxEnemies = 8;
+		m_iMinEnemiesToKillToProgress = 8;
 		m_iMaxWaves = 5;
 		m_iMinEnemiesToEndWave = 1;
 		m_EnemyType = AllocPooledString("combine");
@@ -109,6 +111,8 @@ void CLogicAssault::Spawn(void)
 		m_fSpawnDistance = 400.0F;
 		m_bShouldUpdateEnemies = true;
 	}
+	m_iMinEnemiesToKillToProgressCounter = m_iMinEnemiesToKillToProgress;
+
 	// Run the assault_wave_manager VScript
 	RunScriptFile("assault_wave_manager");
 	if (m_bDisabled)
@@ -136,7 +140,7 @@ void CLogicAssault::AssaultThink(void)
 		MakeNPC();
 	}
 
-	if (m_iNumEnemies <= m_iMinEnemiesToEndWave)
+	if (m_iMinEnemiesToKillToProgressCounter <= m_iMinEnemiesToEndWave)
 	{
 		// If we beat all three phases, go to the next wave
 		if (m_iPhase > 3)
@@ -396,6 +400,15 @@ void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
 	// ok, we've gotten the deathnotice from our child, now clear out its owner if we don't want it to fade.
 	m_iNumEnemies--;
 
+	if (m_iMinEnemiesToKillToProgressCounter > 0)
+	{
+		m_iMinEnemiesToKillToProgressCounter--;
+	}
+	else if (m_iMinEnemiesToKillToProgressCounter <= 0 && m_bEndlessWaves)
+	{
+		m_iMinEnemiesToKillToProgressCounter = m_iMinEnemiesToKillToProgress;
+	}
+
 	// If we're here, we're getting erroneous death messages from children we haven't created
 	AssertMsg(m_iNumEnemies >= 0, "logic_assault receiving child death notice but thinks has no children\n");
 }
@@ -547,6 +560,7 @@ void CLogicAssault::Disable(void)
 	m_bDisabled = true;
 	m_iNumWave = 1;
 	m_iPhase = 0;
+	m_iMinEnemiesToKillToProgressCounter = m_iMinEnemiesToKillToProgress;
 	SetThink(NULL);
 }
 
