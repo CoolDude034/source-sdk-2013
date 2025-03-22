@@ -25,8 +25,6 @@ extern ConVar sk_plr_dmg_smg1_grenade;
 extern ConVar sv_enable_hitscan_weapons;
 extern ConVar sk_bullet_speed;
 
-ConVar sv_mp5_suppressed("sv_mp5_suppressed", "1", FCVAR_CHEAT | FCVAR_REPLICATED);
-
 //-----------------------------------------------------------------------------
 // CWeaponMP5
 //-----------------------------------------------------------------------------
@@ -208,14 +206,7 @@ void CWeaponMP5::FireNPCPrimaryAttack(CBaseCombatCharacter* pOperator, Vector& v
 	// FIXME: Use the returned number of bullets to account for >10hz firerate
 	WeaponSoundRealtime(SINGLE_NPC);
 
-	if (sv_mp5_suppressed.GetBool())
-	{
-		CSoundEnt::InsertSound(SOUND_NONE, pOperator->GetAbsOrigin(), SOUNDENT_VOLUME_MACHINEGUN, 0.2, pOperator, SOUNDENT_CHANNEL_WEAPON, pOperator->GetEnemy());
-	}
-	else
-	{
-		CSoundEnt::InsertSound(SOUND_COMBAT | SOUND_CONTEXT_GUNFIRE, pOperator->GetAbsOrigin(), SOUNDENT_VOLUME_MACHINEGUN, 0.2, pOperator, SOUNDENT_CHANNEL_WEAPON, pOperator->GetEnemy());
-	}
+	CSoundEnt::InsertSound(SOUND_COMBAT | SOUND_CONTEXT_GUNFIRE, pOperator->GetAbsOrigin(), SOUNDENT_VOLUME_MACHINEGUN, 0.2, pOperator, SOUNDENT_CHANNEL_WEAPON, pOperator->GetEnemy());
 	if (sv_enable_hitscan_weapons.GetBool())
 	{
 		pOperator->FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2, entindex(), 0);

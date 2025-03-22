@@ -561,6 +561,8 @@ public:
 	virtual int	GetMinBurst() { return 1; }
 	virtual int	GetMaxBurst() { return 1; }
 
+	virtual bool HasIronsights(void) { return false; }
+
 	virtual float	GetMinRestTime( void ) { return 3.0f; } // 1.5f
 	virtual float	GetMaxRestTime( void ) { return 3.0f; } // 2.0f
 

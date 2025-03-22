@@ -376,6 +376,10 @@ bool CWeaponGlock18::Reload(void)
 	return fRet;
 }
 
+#ifdef MAPBASE
+extern ConVar weapon_pistol_upwards_viewkick;
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -388,7 +392,11 @@ void CWeaponGlock18::AddViewKick(void)
 
 	QAngle	viewPunch;
 
+#ifdef MAPBASE
+	viewPunch.x = weapon_pistol_upwards_viewkick.GetBool() ? random->RandomFloat(-0.5f, -0.25f) : random->RandomFloat(0.25f, 0.5f);
+#else
 	viewPunch.x = random->RandomFloat(0.25f, 0.5f);
+#endif
 	viewPunch.y = random->RandomFloat(-.6f, .6f);
 	viewPunch.z = 0.0f;
 
