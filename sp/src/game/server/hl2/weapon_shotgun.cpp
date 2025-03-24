@@ -47,6 +47,7 @@ private:
 	bool	m_bDelayedFire2;	// Fire secondary when finished reloading
 
 public:
+	void	Spawn( void );
 	void	Precache( void );
 
 	int CapabilitiesGet( void ) { return bits_CAP_WEAPON_RANGE_ATTACK1; }
@@ -257,6 +258,16 @@ int GetShotgunActtableCount()
 }
 #endif
 
+void CWeaponShotgun::Spawn(void)
+{
+	if (GetOwner() != NULL && GetOwner()->Classify() == CLASS_COMBINE && GetOwner()->NameMatches("remington_unit_*"))
+	{
+		m_bIsRemington870 = true;
+	}
+
+	CBaseCombatWeapon::Spawn();
+}
+
 void CWeaponShotgun::Precache( void )
 {
 	CBaseCombatWeapon::Precache();
@@ -350,7 +361,7 @@ const char* CWeaponShotgun::GetWorldModel() const
 
 const char* CWeaponShotgun::GetViewModel() const
 {
-	if (m_bIsRemington870 || GetOwner() != NULL && GetOwner()->Classify() == CLASS_COMBINE && GetOwner()->NameMatches("remington_unit_*"))
+	if (m_bIsRemington870)
 		return "models/weapons/v_remington870.mdl";
 	return BaseClass::GetViewModel();
 }
