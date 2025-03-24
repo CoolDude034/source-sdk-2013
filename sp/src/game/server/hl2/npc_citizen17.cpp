@@ -313,7 +313,8 @@ static const char *g_ppszModelLocs[] =
 	"Group02",
 	"Group03%s",
 	"Combine", // in the case these are indexed by citizentype, even tho citizentype 4 should be ignored
-	"Combine",
+	"Combine", // citizentype 5
+	"Group03%s", // citizentype 6
 };
 
 #define IsExcludedHead( type, bMedic, iHead) false // see XBox codeline for an implementation
@@ -530,7 +531,7 @@ void CNPC_Citizen::PrecacheAllOfType( CitizenType_t type )
 		}
 	}
 
-	if ( m_Type == CT_REBEL )
+	if ( m_Type == CT_REBEL || m_Type == CT_REBEL_HOSTILE )
 	{
 		for ( i = 0; i < nHeads; ++i )
 		{
@@ -723,6 +724,7 @@ void CNPC_Citizen::SelectModel()
 		PrecacheAllOfType( CT_REFUGEE );
 		PrecacheAllOfType( CT_REBEL );
 		PrecacheAllOfType( CT_COMBINE );
+		PrecacheAllOfType( CT_REBEL_HOSTILE );
 	}
 
 	const char *pszModelName = NULL;
@@ -939,6 +941,9 @@ void CNPC_Citizen::SelectExpressionType()
 		break;
 	case CT_COMBINE:
 		m_ExpressionType = (CitizenExpressionTypes_t)RandomInt(CIT_EXP_SCARED, CIT_EXP_ANGRY);
+	case CT_REBEL_HOSTILE:
+		m_ExpressionType = CIT_EXP_ANGRY;
+		break;
 
 	case CT_DEFAULT:
 	case CT_UNIQUE:
@@ -1027,7 +1032,7 @@ Class_T	CNPC_Citizen::Classify()
 		return CLASS_METROPOLICE;
 	if (NameMatches("npc_rioter_*"))
 		return CLASS_CITIZEN_REBEL;
-	if (m_bIsRaider) // conscripts are used for hostile rebels spawned as part of assaults
+	if (m_Type == CT_REBEL_HOSTILE) // conscripts are used for hostile rebels spawned as part of assaults
 		return CLASS_CONSCRIPT;
 	if (GlobalEntity_GetState("gordon_precriminal") == GLOBAL_ON)
 		return CLASS_CITIZEN_PASSIVE;
@@ -1773,18 +1778,38 @@ int CNPC_Citizen::TranslateSchedule( int scheduleType )
 			// Otherwise, they will advance to the target while shooting
 			if (gpGlobals->mapname == d2_prison_07)
 			{
-				if (GetEnemy() != NULL && EntIsClass(GetEnemy(), gm_isz_class_FloorTurret) && GetEnemy()->NameMatches("turret_buddy"))
+				if (GetEnemy() != NULL && EntIsClass(GetEnemy(), gm_isz_class_FloorTurret) && GetEnemy()->NameMatches("turret_buddy*"))
 					return SCHED_RANGE_ATTACK1;
 				return SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE;
 			}
 
 			if (GetEnemy() != NULL && GetEnemy()->IsPlayer())
 			{
-				// Take cover from the player if they are within 25.0 radius
+				// Take cover from the player if they are within 15.0 radius
 				float distSqEnemy = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
-				if (distSqEnemy < 25.0 * 25.0 &&
+				if (distSqEnemy < 15.0 * 15.0 &&
 					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() < distSqEnemy)
 					return SCHED_TAKE_COVER_FROM_ENEMY;
+			}
+		}
+
+		if (m_Type == CT_REBEL_HOSTILE)
+		{
+			if (GetEnemy() != NULL && GetEnemy()->IsPlayer())
+			{
+				// Charge the player if they are far away within 45.0 radius
+				float distSqEnemy = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
+				if (distSqEnemy > 45.0 * 45.0 &&
+					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() > distSqEnemy)
+					return SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE;
+
+				// Take cover from the player if they are within 15.0 radius
+				float distSqEnemy = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
+				if (distSqEnemy < 15.0 * 15.0 &&
+					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() < distSqEnemy)
+					return SCHED_TAKE_COVER_FROM_ENEMY;
+
+				return SCHED_RANGE_ATTACK1;
 			}
 		}
 		break;
