@@ -495,7 +495,7 @@ void CLogicAssault::MakeNPC(void)
 	else if (pent->ClassMatches("npc_citizen"))
 	{
 		pent->AddSpawnFlags(262144); // Random head
-		pent->KeyValue("citizentype", "3"); // Rebel Citizen
+		pent->KeyValue("citizentype", "6"); // Rebel Citizen (hostile)
 		if (random->RandomFloat() < m_fEnemyCitizenMedicChance)
 		{
 			pent->AddSpawnFlags(131072); // Chance for Enemy Medic
@@ -507,12 +507,6 @@ void CLogicAssault::MakeNPC(void)
 		else
 		{
 			pent->m_spawnEquipment = AllocPooledString("weapon_smg1");
-		}
-		CNPC_Citizen* pCitizen = dynamic_cast<CNPC_Citizen*>(pent);
-		if (pCitizen)
-		{
-			// this is bad practice but i don't know anymore...
-			//pCitizen->m_bIsRaider = true;
 		}
 	}
 	if (random->RandomFloat() < m_fGrenadeChance)
