@@ -370,9 +370,12 @@ const char* CWeaponShotgun::GetViewModel() const
 //-----------------------------------------------------------------------------
 float CWeaponShotgun::GetMinRestTime()
 {
-	if( hl2_episodic.GetBool() && GetOwner() && GetOwner()->Classify() == CLASS_COMBINE )
+	if( hl2_episodic.GetBool() )
 	{
-		return 1.2f;
+		if (GetOwner() && GetOwner()->Classify() == CLASS_COMBINE || GetOwner() && GetOwner()->Classify() == CLASS_METROPOLICE)
+		{
+			return 1.2f;
+		}
 	}
 	
 	return BaseClass::GetMinRestTime();
@@ -382,9 +385,12 @@ float CWeaponShotgun::GetMinRestTime()
 //-----------------------------------------------------------------------------
 float CWeaponShotgun::GetMaxRestTime()
 {
-	if( hl2_episodic.GetBool() && GetOwner() && GetOwner()->Classify() == CLASS_COMBINE )
+	if( hl2_episodic.GetBool() )
 	{
-		return 1.5f;
+		if (GetOwner() && GetOwner()->Classify() == CLASS_COMBINE || GetOwner() && GetOwner()->Classify() == CLASS_METROPOLICE)
+		{
+			return 1.5f;
+		}
 	}
 
 	return BaseClass::GetMaxRestTime();
@@ -396,9 +402,12 @@ float CWeaponShotgun::GetMaxRestTime()
 //-----------------------------------------------------------------------------
 float CWeaponShotgun::GetFireRate()
 {
-	if( hl2_episodic.GetBool() && GetOwner() && GetOwner()->Classify() == CLASS_COMBINE )
+	if( hl2_episodic.GetBool() )
 	{
-		return 0.8f;
+		if (GetOwner() && GetOwner()->Classify() == CLASS_COMBINE || GetOwner() && GetOwner()->Classify() == CLASS_METROPOLICE)
+		{
+			return 0.8f;
+		}
 	}
 
 	return 0.7;
