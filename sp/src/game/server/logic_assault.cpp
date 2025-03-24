@@ -512,7 +512,7 @@ void CLogicAssault::MakeNPC(void)
 		if (pCitizen)
 		{
 			// this is bad practice but i don't know anymore...
-			pCitizen->m_bIsRaider = true;
+			//pCitizen->m_bIsRaider = true;
 		}
 	}
 	if (random->RandomFloat() < m_fGrenadeChance)
