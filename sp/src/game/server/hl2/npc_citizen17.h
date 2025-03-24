@@ -52,7 +52,8 @@ enum CitizenType_t
 	CT_REFUGEE,
 	CT_REBEL,
 	CT_UNIQUE,
-	CT_COMBINE
+	CT_COMBINE,
+	CT_REBEL_HOSTILE,
 };
 
 //-----------------------------------------------------------------------------
@@ -284,8 +285,6 @@ public:
 	int				GetCitizenType() { return (int)m_Type; }
 	void			SetCitizenType( int iType ) { m_Type = (CitizenType_t)iType; }
 #endif
-
-	bool			m_bIsRaider; // marks this citizen as a pillager uh i mean hostile rebel participating in waves spawned by logic_assault
 
 private:
 	//-----------------------------------------------------
