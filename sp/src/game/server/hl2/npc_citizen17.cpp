@@ -633,6 +633,7 @@ void CNPC_Citizen::Spawn()
 	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
 	{
 		AddEFlags(EFL_NO_DISSOLVE);
+		AddContext("is_combine_security", "1"); // Give security unique responses
 		m_bDontPickupWeapons = true;
 
 		if (m_spawnEquipment == NULL_STRING || m_spawnEquipment == gm_isz_class_Pistol)
