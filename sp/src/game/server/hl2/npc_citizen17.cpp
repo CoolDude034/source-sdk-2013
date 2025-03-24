@@ -1024,7 +1024,7 @@ string_t CNPC_Citizen::GetModelName() const
 Class_T	CNPC_Citizen::Classify()
 {
 	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
-		return CLASS_COMBINE; //CLASS_METROPOLICE
+		return CLASS_METROPOLICE;
 	if (NameMatches("npc_rioter_*"))
 		return CLASS_CITIZEN_REBEL;
 	if (m_bIsRaider) // conscripts are used for hostile rebels spawned as part of assaults
