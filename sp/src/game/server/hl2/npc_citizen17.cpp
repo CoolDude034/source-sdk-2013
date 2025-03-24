@@ -1785,9 +1785,9 @@ int CNPC_Citizen::TranslateSchedule( int scheduleType )
 
 			if (GetEnemy() != NULL && GetEnemy()->IsPlayer())
 			{
-				// Take cover from the player if they are within 15.0 radius
+				// Take cover from the player if they are within 25.0 radius
 				float distSqEnemy = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
-				if (distSqEnemy < 15.0 * 15.0 &&
+				if (distSqEnemy < 25.0 * 25.0 &&
 					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() < distSqEnemy)
 					return SCHED_TAKE_COVER_FROM_ENEMY;
 				return SCHED_RANGE_ATTACK1;
@@ -1798,19 +1798,12 @@ int CNPC_Citizen::TranslateSchedule( int scheduleType )
 		{
 			if (GetEnemy() != NULL && GetEnemy()->IsPlayer())
 			{
-				// Charge the player if they are far away within 45.0 radius
+				// Charge the player if they are far away within 25.0 radius
 				float distSqEnemy = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
-				if (distSqEnemy > 45.0 * 45.0 &&
-					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() > distSqEnemy)
-					return SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE;
-
-				// Take cover from the player if they are within 15.0 radius
-				float distSqEnemy2 = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
-				if (distSqEnemy2 < 15.0 * 15.0 &&
-					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() < distSqEnemy2)
+				if (distSqEnemy < 25.0 * 25.0 &&
+					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() < distSqEnemy)
 					return SCHED_TAKE_COVER_FROM_ENEMY;
-
-				return SCHED_RANGE_ATTACK1;
+				return SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE;
 			}
 		}
 		break;
