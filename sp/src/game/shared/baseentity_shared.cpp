@@ -1652,8 +1652,12 @@ void CBaseEntity::FireBullets( const FireBulletsInfo_t &info )
 	{
 		CBasePlayer *pPlayer = dynamic_cast<CBasePlayer*>(this);
 
-		int rumbleEffect = pPlayer->GetActiveWeapon()->GetRumbleEffect();
+		// Unhandled exception thrown: read access violation.
+		// CBaseCombatCharacter::GetActiveWeapon(...) returned nullptr
 		CBaseCombatWeapon* pWeapon = pPlayer->GetActiveWeapon();
+		if (pWeapon == NULL)
+			return;
+		int rumbleEffect = pWeapon->GetRumbleEffect();
 		if (!pWeapon && !sv_enable_hitscan_weapons.GetBool())
 			return;
 
