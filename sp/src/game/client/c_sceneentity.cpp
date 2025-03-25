@@ -1091,8 +1091,14 @@ void C_SceneEntity::DoThink( float frametime )
 
 	// Msg( "CL:  %d, %f for %s\n", gpGlobals->tickcount, m_flCurrentTime, m_pScene->GetFilename() );
 
+	// Unhandled exception thrown: read access violation.
+	// this was 0x80000001.
+
 	// Tell scene to go
-	m_pScene->Think( m_flCurrentTime );
+	if (m_pScene != NULL)
+	{
+		m_pScene->Think(m_flCurrentTime);
+	}
 	// Drive simulation time for scene
 	m_flCurrentTime += gpGlobals->frametime;
 }
