@@ -47,7 +47,6 @@ private:
 	bool	m_bDelayedFire2;	// Fire secondary when finished reloading
 
 public:
-	void	Spawn( void );
 	void	Precache( void );
 
 	int CapabilitiesGet( void ) { return bits_CAP_WEAPON_RANGE_ATTACK1; }
@@ -92,10 +91,6 @@ public:
 	void Operator_ForceNPCFire( CBaseCombatCharacter  *pOperator, bool bSecondary );
 	void Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
 
-	bool m_bIsRemington870;
-	const char* GetWorldModel() const;
-	const char* GetViewModel() const;
-
 	DECLARE_ACTTABLE();
 
 	CWeaponShotgun(void);
@@ -112,8 +107,6 @@ BEGIN_DATADESC( CWeaponShotgun )
 	DEFINE_FIELD( m_bNeedPump, FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_bDelayedFire1, FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_bDelayedFire2, FIELD_BOOLEAN ),
-
-	DEFINE_KEYFIELD(m_bIsRemington870, FIELD_BOOLEAN, "IsRemington870"),
 
 END_DATADESC()
 
@@ -258,16 +251,6 @@ int GetShotgunActtableCount()
 }
 #endif
 
-void CWeaponShotgun::Spawn(void)
-{
-	if (GetOwner() != NULL && GetOwner()->Classify() == CLASS_COMBINE && GetOwner()->NameMatches("remington_unit_*"))
-	{
-		m_bIsRemington870 = true;
-	}
-
-	CBaseCombatWeapon::Spawn();
-}
-
 void CWeaponShotgun::Precache( void )
 {
 	CBaseCombatWeapon::Precache();
@@ -350,20 +333,6 @@ void CWeaponShotgun::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatC
 			CBaseCombatWeapon::Operator_HandleAnimEvent( pEvent, pOperator );
 			break;
 	}
-}
-
-const char* CWeaponShotgun::GetWorldModel() const
-{
-	if (m_bIsRemington870)
-		return "models/weapons/w_remington870.mdl";
-	return BaseClass::GetWorldModel();
-}
-
-const char* CWeaponShotgun::GetViewModel() const
-{
-	if (m_bIsRemington870)
-		return "models/weapons/v_remington870.mdl";
-	return BaseClass::GetViewModel();
 }
 
 
@@ -1003,3 +972,40 @@ void CWeaponShotgun::WeaponIdle( void )
 	}
 }
 */
+
+
+// REMINGTON 870
+// Most of the methods are inherited from parent class (CWeaponShotgun)
+class CWeaponRemington870 : public CWeaponShotgun
+{
+	DECLARE_DATADESC();
+public:
+	DECLARE_CLASS(CWeaponRemington870, CWeaponShotgun);
+
+	DECLARE_SERVERCLASS();
+
+private:
+	bool	m_bNeedPump;		// When emptied completely
+	bool	m_bDelayedFire1;	// Fire primary when finished reloading
+	bool	m_bDelayedFire2;	// Fire secondary when finished reloading
+
+public:
+
+	DECLARE_ACTTABLE();
+
+	CWeaponRemington870(void);
+};
+
+IMPLEMENT_SERVERCLASS_ST(CWeaponRemington870, DT_WeaponRemington870)
+END_SEND_TABLE()
+
+LINK_ENTITY_TO_CLASS(weapon_remington870, CWeaponRemington870);
+PRECACHE_WEAPON_REGISTER(weapon_remington870);
+
+BEGIN_DATADESC(CWeaponRemington870)
+
+DEFINE_FIELD(m_bNeedPump, FIELD_BOOLEAN),
+DEFINE_FIELD(m_bDelayedFire1, FIELD_BOOLEAN),
+DEFINE_FIELD(m_bDelayedFire2, FIELD_BOOLEAN),
+
+END_DATADESC()
