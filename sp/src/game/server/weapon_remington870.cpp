@@ -238,6 +238,7 @@ acttable_t	CWeaponRemington870::m_acttable[] =
 
 IMPLEMENT_ACTTABLE(CWeaponRemington870);
 
+/* Why the fuck is this a global function
 #ifdef MAPBASE
 // Allows Weapon_BackupActivity() to access the shotgun's activity table.
 acttable_t* GetShotgunActtable()
@@ -250,6 +251,7 @@ int GetShotgunActtableCount()
 	return ARRAYSIZE(CWeaponRemington870::m_acttable);
 }
 #endif
+*/
 
 void CWeaponRemington870::Precache(void)
 {
