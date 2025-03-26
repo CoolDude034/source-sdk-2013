@@ -26,6 +26,7 @@ STUB_WEAPON_CLASS( weapon_citizensuitcase, WeaponCitizenSuitcase, C_WeaponCitize
 STUB_WEAPON_CLASS(weapon_glock18, WeaponGlock18, C_BaseHLCombatWeapon);
 STUB_WEAPON_CLASS(weapon_mp5, WeaponMP5, C_HLSelectFireMachineGun);
 STUB_WEAPON_CLASS(weapon_sniperrifle, WeaponSniperRifle, C_HLSelectFireMachineGun);
+STUB_WEAPON_CLASS(weapon_remington870, WeaponRemington870, C_BaseHLCombatWeapon);
 
 #ifndef HL2MP
 STUB_WEAPON_CLASS( weapon_ar2, WeaponAR2, C_HLMachineGun );
