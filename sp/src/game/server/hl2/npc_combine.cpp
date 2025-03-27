@@ -49,6 +49,15 @@ ConVar npc_combine_altfire_not_allies_only( "npc_combine_altfire_not_allies_only
 ConVar npc_combine_new_cover_behavior( "npc_combine_new_cover_behavior", "1", FCVAR_NONE, "Mapbase: Toggles small patches for parts of npc_combine AI related to soldiers failing to take cover. These patches are minimal and only change cases where npc_combine would otherwise look at an enemy without shooting or run up to the player to melee attack when they don't have to. Consult the Mapbase wiki for more information." );
 
 ConVar npc_combine_fixed_shootpos( "npc_combine_fixed_shootpos", "0", FCVAR_NONE, "Mapbase: Toggles fixed Combine soldier shoot position." );
+
+// Allow easy tuning for these variables
+ConVar npc_combine_grenade_throw_speed("npc_combine_grenade_throw_speed", "650");
+ConVar npc_combine_grenade_timer("npc_combine_grenade_timer", "3.5");
+ConVar npc_combine_grenade_flush_time("npc_combine_grenade_flush_time", "3.0");
+ConVar npc_combine_grenade_flush_dist("npc_combine_grenade_flush_dist", "256.0");
+
+ConVar npc_combine_elites_always_spawn_with_ar2("npc_combine_elites_always_spawn_with_ar2", "1");
+ConVar npc_combine_allow_climbing("npc_combine_allow_climbing", "0");
 #endif
 
 #define COMBINE_SKIN_DEFAULT		0
@@ -56,10 +65,10 @@ ConVar npc_combine_fixed_shootpos( "npc_combine_fixed_shootpos", "0", FCVAR_NONE
 
 
 #ifndef MAPBASE
-#define COMBINE_GRENADE_THROW_SPEED 650
-#define COMBINE_GRENADE_TIMER		3.5
-#define COMBINE_GRENADE_FLUSH_TIME	3.0		// Don't try to flush an enemy who has been out of sight for longer than this.
-#define COMBINE_GRENADE_FLUSH_DIST	256.0	// Don't try to flush an enemy who has moved farther than this distance from the last place I saw him.
+#define COMBINE_GRENADE_THROW_SPEED npc_combine_grenade_throw_speed.GetInt()
+#define COMBINE_GRENADE_TIMER		npc_combine_grenade_timer.GetFloat()
+#define COMBINE_GRENADE_FLUSH_TIME	npc_combine_grenade_flush_time.GetFloat()		// Don't try to flush an enemy who has been out of sight for longer than this.
+#define COMBINE_GRENADE_FLUSH_DIST	npc_combine_grenade_flush_dist.GetFloat()	// Don't try to flush an enemy who has moved farther than this distance from the last place I saw him.
 #endif
 
 #define COMBINE_LIMP_HEALTH				20
@@ -479,10 +488,20 @@ void CNPC_Combine::Spawn( void )
 	CapabilitiesAdd( bits_CAP_NO_HIT_SQUADMATES );
 	CapabilitiesAdd(bits_CAP_FRIENDLY_DMG_IMMUNE); // Prevent friendly fire from allies
 
+	string_t weapon_remington870 = AllocPooledString("weapon_remington870");
+
+	if (npc_combine_allow_climbing.GetBool())
+	{
+		CapabilitiesAdd(bits_CAP_MOVE_CLIMB);
+	}
+
 	if (IsElite())
 	{
-		m_iTacticalVariant = TACTICAL_VARIANT_PRESSURE_ENEMY;
-		m_spawnEquipment = AllocPooledString("weapon_ar2");
+		if (npc_combine_elites_always_spawn_with_ar2.GetBool())
+		{
+			m_iTacticalVariant = TACTICAL_VARIANT_PRESSURE_ENEMY;
+			m_spawnEquipment = AllocPooledString("weapon_ar2");
+		}
 	}
 	else if (IsShield())
 	{
@@ -505,6 +524,12 @@ void CNPC_Combine::Spawn( void )
 		{
 			m_spawnEquipment = AllocPooledString("weapon_mp5");
 		}
+
+		// 25% chance to equip the Remington 870
+		if (m_spawnEquipment == gm_isz_class_Shotgun && random->RandomFloat() < 0.25F)
+		{
+			m_spawnEquipment = weapon_remington870;
+		}
 	}
 
 	m_bFirstEncounter	= true;// this is true when the grunt spawns, because he hasn't encountered an enemy yet.
@@ -523,9 +548,14 @@ void CNPC_Combine::Spawn( void )
 
 #ifdef MAPBASE
 	// This was moved from CalcWeaponProficiency() so soldiers don't change skin unnaturally and uncontrollably
-	if ( GetActiveWeapon() && EntIsClass(GetActiveWeapon(), gm_isz_class_Shotgun) && m_nSkin != COMBINE_SKIN_SHOTGUNNER )
+	if ( GetActiveWeapon() )
 	{
-		m_nSkin = COMBINE_SKIN_SHOTGUNNER;
+		// Have to move this here, to support both vanilla shotgun and remington 870
+		bool isShotgunner = EntIsClass(GetActiveWeapon(), gm_isz_class_Shotgun) || EntIsClass(GetActiveWeapon(), weapon_remington870);
+		if (isShotgunner && m_nSkin != COMBINE_SKIN_SHOTGUNNER)
+		{
+			m_nSkin = COMBINE_SKIN_SHOTGUNNER;
+		}
 	}
 #endif
 }
@@ -787,6 +817,9 @@ Class_T	CNPC_Combine::Classify ( void )
 //-----------------------------------------------------------------------------
 bool CNPC_Combine::IsAltFireCapable( void )
 {
+	// Shields aren't capable of alt-firing
+	if (IsShield())
+		return false;
 	// The base class tells us if we're carrying an alt-fire-able weapon.
 	return (IsElite() || m_bAlternateCapable) && BaseClass::IsAltFireCapable();
 }
@@ -796,6 +829,9 @@ bool CNPC_Combine::IsAltFireCapable( void )
 //-----------------------------------------------------------------------------
 bool CNPC_Combine::IsGrenadeCapable( void )
 {
+	// Shields aren't capable of throwing grenades even if they have grenades
+	if (IsShield())
+		return false;
 	return !IsElite() || m_bAlternateCapable;
 }
 #endif
