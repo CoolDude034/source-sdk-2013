@@ -767,6 +767,13 @@ void CNPC_MetroPolice::Spawn( void )
 			m_spawnEquipment = AllocPooledString("weapon_mp5");
 		}
 	}
+	else if (m_spawnEquipment == gm_isz_class_Shotgun)
+	{
+		if (random->RandomFloat() < 0.25F)
+		{
+			m_spawnEquipment = AllocPooledString("weapon_remington870");
+		}
+	}
 
 	NPCInit();
 
