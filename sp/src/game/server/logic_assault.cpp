@@ -18,7 +18,7 @@
 #include "tier0/memdbgon.h"
 
 #define GENERIC_ASSAULT_FILE "scripts/assault_wavedata.txt"
-#define LEVEL_ASSAULT_TWEAK_FILE UTIL_VarArgs("maps/%s_assault_wavedata.txt", STRING(gpGlobals->mapname))
+#define LEVEL_ASSAULT_TWEAK_FILE UTIL_VarArgs("scripts/%s_assault_wavedata.txt", STRING(gpGlobals->mapname))
 
 #define ASSAULT_SPAWN_POINT_NAME "info_assault_spawn_point"
 
@@ -113,7 +113,7 @@ void CLogicAssault::Spawn(void)
 	}
 	m_iMinEnemiesToKillToProgressCounter = m_iMinEnemiesToKillToProgress;
 
-	// Run the assault_wave_manager VScript
+	// Run the assault_wave_manager.nut VScript
 	RunScriptFile("assault_wave_manager");
 	if (m_bDisabled)
 	{
