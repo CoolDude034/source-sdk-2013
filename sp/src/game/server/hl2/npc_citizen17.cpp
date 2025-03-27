@@ -117,6 +117,8 @@ ConVar npc_citizen_resupplier_adjust_ammo("npc_citizen_resupplier_adjust_ammo", 
 ConVar npc_citizen_nocollide_player( "npc_citizen_nocollide_player", "0" );
 #endif
 
+ConVar npc_citizen_combine_citizens_should_classify_as_combine("npc_citizen_combine_citizens_should_classify_as_combine", "0");
+
 #define ShouldAutosquad() (npc_citizen_auto_player_squad.GetBool())
 
 enum SquadSlot_T
@@ -1030,7 +1032,11 @@ string_t CNPC_Citizen::GetModelName() const
 Class_T	CNPC_Citizen::Classify()
 {
 	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
+	{
+		if (npc_citizen_combine_citizens_should_classify_as_combine.GetBool())
+			return CLASS_COMBINE;
 		return CLASS_METROPOLICE;
+	}
 	if (NameMatches("npc_rioter_*"))
 		return CLASS_CITIZEN_REBEL;
 	if (m_Type == CT_REBEL_HOSTILE) // conscripts are used for hostile rebels spawned as part of assaults
