@@ -97,9 +97,7 @@ static ConCommand toggle_ironsight("toggle_ironsight", CC_ToggleIronSights);
 #endif
 
 extern ConVar sv_enable_hitscan_weapons;
-
-// Bullet travel time
-ConVar sk_bullet_speed("sk_bullet_speed", "2500");
+extern ConVar sk_bullet_speed;
 
 CBaseCombatWeapon::CBaseCombatWeapon()
 {
