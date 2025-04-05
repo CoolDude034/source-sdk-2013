@@ -751,7 +751,7 @@ void CNPC_MetroPolice::Spawn( void )
 	// Eh whatever doesn't matter, who even would see this
 	if (m_spawnEquipment == NULL_STRING || m_spawnEquipment == gm_isz_class_Pistol)
 	{
-		if (random->RandomFloat() < 0.25F)
+		if (GetModelName() != metropolice_elite_model && random->RandomFloat() < 0.25F)
 		{
 			m_spawnEquipment = AllocPooledString("weapon_glock18");
 		}
