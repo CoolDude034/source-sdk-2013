@@ -51,13 +51,18 @@ ConVar npc_combine_new_cover_behavior( "npc_combine_new_cover_behavior", "1", FC
 ConVar npc_combine_fixed_shootpos( "npc_combine_fixed_shootpos", "0", FCVAR_NONE, "Mapbase: Toggles fixed Combine soldier shoot position." );
 
 // Allow easy tuning for these variables
-ConVar npc_combine_grenade_throw_speed("npc_combine_grenade_throw_speed", "650");
-ConVar npc_combine_grenade_timer("npc_combine_grenade_timer", "3.5");
-ConVar npc_combine_grenade_flush_time("npc_combine_grenade_flush_time", "3.0");
-ConVar npc_combine_grenade_flush_dist("npc_combine_grenade_flush_dist", "256.0");
+ConVar npc_combine_grenade_throw_speed("npc_combine_grenade_throw_speed", "650", FCVAR_HIDDEN);
+ConVar npc_combine_grenade_timer("npc_combine_grenade_timer", "3.5", FCVAR_HIDDEN);
+ConVar npc_combine_grenade_flush_time("npc_combine_grenade_flush_time", "3.0", FCVAR_HIDDEN);
+ConVar npc_combine_grenade_flush_dist("npc_combine_grenade_flush_dist", "256.0", FCVAR_HIDDEN);
+ConVar npc_combine_grenade_min_clear_dist("npc_combine_grenade_min_clear_dist", "250", FCVAR_HIDDEN);
 
-ConVar npc_combine_elites_always_spawn_with_ar2("npc_combine_elites_always_spawn_with_ar2", "1");
-ConVar npc_combine_allow_climbing("npc_combine_allow_climbing", "0");
+ConVar npc_combine_limp_health("npc_combine_limp_health", "20", FCVAR_HIDDEN);
+
+ConVar npc_combine_min_crouch_dist("npc_combine_min_crouch_dist", "256.0", FCVAR_HIDDEN);
+
+ConVar npc_combine_elites_always_spawn_with_ar2("npc_combine_elites_always_spawn_with_ar2", "1", FCVAR_HIDDEN);
+ConVar npc_combine_allow_climbing("npc_combine_allow_climbing", "0", FCVAR_HIDDEN);
 #endif
 
 #define COMBINE_SKIN_DEFAULT		0
@@ -71,9 +76,9 @@ ConVar npc_combine_allow_climbing("npc_combine_allow_climbing", "0");
 #define COMBINE_GRENADE_FLUSH_DIST	npc_combine_grenade_flush_dist.GetFloat()	// Don't try to flush an enemy who has moved farther than this distance from the last place I saw him.
 #endif
 
-#define COMBINE_LIMP_HEALTH				20
+#define COMBINE_LIMP_HEALTH				npc_combine_limp_health.GetInt()
 #ifndef MAPBASE
-#define	COMBINE_MIN_GRENADE_CLEAR_DIST	250
+#define	COMBINE_MIN_GRENADE_CLEAR_DIST	npc_combine_grenade_min_clear_dist.GetInt()
 #endif
 
 #define COMBINE_EYE_STANDING_POSITION	Vector( 0, 0, 66 )
@@ -82,7 +87,7 @@ ConVar npc_combine_allow_climbing("npc_combine_allow_climbing", "0");
 #define COMBINE_GUN_CROUCHING_POSITION	Vector( 0, 0, 36 )
 #define COMBINE_SHOTGUN_STANDING_POSITION	Vector( 0, 0, 36 )
 #define COMBINE_SHOTGUN_CROUCHING_POSITION	Vector( 0, 0, 36 )
-#define COMBINE_MIN_CROUCH_DISTANCE		256.0
+#define COMBINE_MIN_CROUCH_DISTANCE		npc_combine_min_crouch_dist.GetFloat()
 
 //-----------------------------------------------------------------------------
 // Static stuff local to this file.
