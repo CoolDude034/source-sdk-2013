@@ -50,7 +50,7 @@ static string_t SPAWN_TYPE_NEAREST = AllocPooledString("nearest");
 
 CLogicAssault::CLogicAssault()
 {
-	VScriptRunScript("assault_wave_manager", true);
+	RunScriptFile("assault_wave_manager");
 }
 
 void CLogicAssault::Spawn(void)
