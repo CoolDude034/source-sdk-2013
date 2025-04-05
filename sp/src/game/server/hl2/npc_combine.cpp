@@ -508,6 +508,21 @@ void CNPC_Combine::Spawn( void )
 			m_spawnEquipment = AllocPooledString("weapon_ar2");
 		}
 	}
+	else if (IsCharger())
+	{
+		// "Ready to hammer in three... two... one..."
+		CapabilitiesRemove(bits_CAP_DUCK);
+		m_iTacticalVariant = TACTICAL_VARIANT_DEFAULT;
+		m_spawnEquipment = AllocPooledString("weapon_ar2");
+	}
+	else if (IsSuppressor())
+	{
+		// "Antibody Protection Force active on."
+		CapabilitiesRemove(bits_CAP_DUCK);
+		CapabilitiesRemove(bits_CAP_INNATE_MELEE_ATTACK1);
+		m_iTacticalVariant = TACTICAL_VARIANT_DEFAULT;
+		m_spawnEquipment = AllocPooledString("weapon_ar2");
+	}
 	else if (IsShield())
 	{
 		CapabilitiesRemove(bits_CAP_DUCK);
@@ -825,6 +840,8 @@ bool CNPC_Combine::IsAltFireCapable( void )
 	// Shields aren't capable of alt-firing
 	if (IsShield())
 		return false;
+	if (IsSuppressor() || IsCharger())
+		return false;
 	// The base class tells us if we're carrying an alt-fire-able weapon.
 	return (IsElite() || m_bAlternateCapable) && BaseClass::IsAltFireCapable();
 }
@@ -836,6 +853,8 @@ bool CNPC_Combine::IsGrenadeCapable( void )
 {
 	// Shields aren't capable of throwing grenades even if they have grenades
 	if (IsShield())
+		return false;
+	if (IsSuppressor() || IsCharger())
 		return false;
 	return !IsElite() || m_bAlternateCapable;
 }
@@ -1914,63 +1933,90 @@ int CNPC_Combine::SelectCombatSchedule()
 				AnnounceEnemyType( pEnemy );
 			}
 
-			if ( HasCondition( COND_CAN_RANGE_ATTACK1 ) && OccupyStrategySlot( SQUAD_SLOT_ATTACK1 ) )
-			{
-				// Start suppressing if someone isn't firing already (SLOT_ATTACK1). This means
-				// I'm the guy who spotted the enemy, I should react immediately.
-				return SCHED_COMBINE_SUPPRESS;
-			}
+			// Must be regular unit
+			bool m_bCanPerformSquadTactics = !IsShield() && !IsSuppressor() && !IsCharger();
 
-			if ( m_pSquad->IsLeader( this ) || ( m_pSquad->GetLeader() && m_pSquad->GetLeader()->GetEnemy() != pEnemy ) )
+			if (m_bCanPerformSquadTactics)
 			{
-				// I'm the leader, but I didn't get the job suppressing the enemy. We know this because
-				// This code only runs if the code above didn't assign me SCHED_COMBINE_SUPPRESS.
-				if ( HasCondition( COND_CAN_RANGE_ATTACK1 ) && OccupyStrategySlotRange( SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2 ) )
+				if (HasCondition(COND_CAN_RANGE_ATTACK1) && OccupyStrategySlot(SQUAD_SLOT_ATTACK1))
 				{
-					return SCHED_RANGE_ATTACK1;
+					// Start suppressing if someone isn't firing already (SLOT_ATTACK1). This means
+					// I'm the guy who spotted the enemy, I should react immediately.
+					return SCHED_COMBINE_SUPPRESS;
 				}
 
-				if( HasCondition(COND_WEAPON_HAS_LOS) && IsStrategySlotRangeOccupied( SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2 ) )
+				if (m_pSquad->IsLeader(this) || (m_pSquad->GetLeader() && m_pSquad->GetLeader()->GetEnemy() != pEnemy))
 				{
-					// If everyone else is attacking and I have line of fire, wait for a chance to cover someone.
-					if( OccupyStrategySlot( SQUAD_SLOT_OVERWATCH ) )
+					// I'm the leader, but I didn't get the job suppressing the enemy. We know this because
+					// This code only runs if the code above didn't assign me SCHED_COMBINE_SUPPRESS.
+					if (HasCondition(COND_CAN_RANGE_ATTACK1) && OccupyStrategySlotRange(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
 					{
-						return SCHED_COMBINE_ENTER_OVERWATCH;
+						return SCHED_RANGE_ATTACK1;
 					}
+
+					if (HasCondition(COND_WEAPON_HAS_LOS) && IsStrategySlotRangeOccupied(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
+					{
+						// If everyone else is attacking and I have line of fire, wait for a chance to cover someone.
+						if (OccupyStrategySlot(SQUAD_SLOT_OVERWATCH))
+						{
+							return SCHED_COMBINE_ENTER_OVERWATCH;
+						}
+					}
+
+					// Overwatch, sector is not secure.
+					if (HasCondition(COND_MOBBED_BY_ENEMIES))
+					{
+						return SCHED_BACK_AWAY_FROM_ENEMY;
+					}
+				}
+				else
+				{
+					if (m_pSquad->GetLeader() && FOkToMakeSound(SENTENCE_PRIORITY_MEDIUM))
+					{
+						JustMadeSound(SENTENCE_PRIORITY_MEDIUM);	// squelch anything that isn't high priority so the leader can speak
+					}
+
+					// First contact, and I'm solo, or not the squad leader.
+					if (HasCondition(COND_SEE_ENEMY) && CanGrenadeEnemy())
+					{
+						if (OccupyStrategySlot(SQUAD_SLOT_GRENADE1))
+						{
+							return SCHED_RANGE_ATTACK2;
+						}
+					}
+
+					if (!bFirstContact && OccupyStrategySlotRange(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
+					{
+						if (random->RandomInt(0, 100) < 60)
+						{
+							return SCHED_ESTABLISH_LINE_OF_FIRE;
+						}
+						else
+						{
+							return SCHED_COMBINE_PRESS_ATTACK;
+						}
+					}
+
+					return SCHED_TAKE_COVER_FROM_ENEMY;
 				}
 			}
 			else
 			{
-				if ( m_pSquad->GetLeader() && FOkToMakeSound( SENTENCE_PRIORITY_MEDIUM ) )
+				if (IsSuppressor())
 				{
-					JustMadeSound( SENTENCE_PRIORITY_MEDIUM );	// squelch anything that isn't high priority so the leader can speak
+					// Now we're close to our enemy, back away.
+					if (HasCondition(COND_SEE_ENEMY) && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) < Square(30.0f * 12.0f) || HasCondition(COND_MOBBED_BY_ENEMIES))
+						return SCHED_BACK_AWAY_FROM_ENEMY;
 				}
-
-				// First contact, and I'm solo, or not the squad leader.
-				if( HasCondition( COND_SEE_ENEMY ) && CanGrenadeEnemy() && !IsShield() )
+				if (IsCharger())
 				{
-					if( OccupyStrategySlot( SQUAD_SLOT_GRENADE1 ) )
-					{
-						return SCHED_RANGE_ATTACK2;
-					}
-				}
-
-				if( !bFirstContact && OccupyStrategySlotRange( SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2 ) )
-				{
-					if( random->RandomInt(0, 100) < 60 )
-					{
-						return SCHED_ESTABLISH_LINE_OF_FIRE;
-					}
-					else
-					{
+					// Enemy is too far away from us, chase them.
+					if (GetEnemy()->IsPlayer() && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) > Square(30.0f * 12.0f))
+						return SCHED_COMBINE_CHARGE_PLAYER;
+					// Now we're close to our enemy, pressure them.
+					if (GetEnemy()->IsPlayer() && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) < Square(30.0f * 12.0f))
 						return SCHED_COMBINE_PRESS_ATTACK;
-					}
 				}
-
-				// If we have a shield, do a range attack
-				if (IsShield())
-					return SCHED_RANGE_ATTACK1;
-				return SCHED_TAKE_COVER_FROM_ENEMY;
 			}
 		}
 	}
@@ -1980,13 +2026,22 @@ int CNPC_Combine::SelectCombatSchedule()
 	// ---------------------
 	if ( ( HasCondition ( COND_NO_PRIMARY_AMMO ) || HasCondition ( COND_LOW_PRIMARY_AMMO ) ) && !HasCondition( COND_CAN_MELEE_ATTACK1) )
 	{
-		return SCHED_HIDE_AND_RELOAD;
+		if (IsSuppressor() || IsCharger())
+		{
+			return SCHED_RELOAD;
+		}
+		else
+		{
+			return SCHED_HIDE_AND_RELOAD;
+		}
 	}
 
 	// ----------------------
 	// LIGHT DAMAGE
+	// 
+	// Suppressors, Chargers and Shields do not take cover from light damage.
 	// ----------------------
-	if ( HasCondition( COND_LIGHT_DAMAGE ) )
+	if ( HasCondition( COND_LIGHT_DAMAGE ) && !IsSuppressor() && !IsCharger() && !IsShield() )
 	{
 		if ( GetEnemy() != NULL )
 		{
@@ -2079,7 +2134,20 @@ int CNPC_Combine::SelectCombatSchedule()
 			return SCHED_COMBINE_PRESS_ATTACK;
 		}
 
-		AnnounceAssault(); 
+		if (IsShield())
+			// Charge into enemy's cover
+			return SCHED_ESTABLISH_LINE_OF_FIRE;
+		if (IsSuppressor())
+		{
+			// Face our enemy.
+			return SCHED_COMBINE_COMBAT_FACE;
+		}
+		if (IsCharger())
+		{
+			return SCHED_COMBINE_PRESS_ATTACK;
+		}
+
+		AnnounceAssault();
 		return SCHED_COMBINE_ASSAULT;
 	}
 
@@ -2251,7 +2319,7 @@ int CNPC_Combine::SelectSchedule( void )
 	{
 	case NPC_STATE_IDLE:
 		{
-			if ( m_bShouldPatrol )
+			if ( m_bShouldPatrol || IsSuppressor() || IsCharger() )
 				return SCHED_COMBINE_PATROL;
 		}
 		// NOTE: Fall through!
@@ -3170,6 +3238,15 @@ void CNPC_Combine::ModifyOrAppendCriteria( AI_CriteriaSet& set )
 	else
 	{
 		set.AppendCriteria( "elite", "0" );
+	}
+
+	if (IsSuppressor())
+	{
+		set.AppendCriteria("suppressor", "1");
+	}
+	else if (IsCharger())
+	{
+		set.AppendCriteria("charger", "1");
 	}
 }
 #endif
