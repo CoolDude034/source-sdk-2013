@@ -11,12 +11,16 @@
 #include "game.h"
 #include "in_buttons.h"
 #include "gamestats.h"
+#include "actual_bullet.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
 IMPLEMENT_SERVERCLASS_ST( CHLMachineGun, DT_HLMachineGun )
 END_SEND_TABLE()
+
+extern ConVar sv_enable_hitscan_weapons;
+extern ConVar sk_bullet_speed;
 
 //=========================================================
 //	>> CHLSelectFireMachineGun
@@ -47,15 +51,15 @@ const Vector &CHLMachineGun::GetBulletSpread( void )
 //
 //
 //-----------------------------------------------------------------------------
-void CHLMachineGun::PrimaryAttack( void )
+void CHLMachineGun::PrimaryAttack(void)
 {
 	// Only the player fires this way so we can cast
-	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
+	CBasePlayer* pPlayer = ToBasePlayer(GetOwner());
 	if (!pPlayer)
 		return;
-	
+
 	// Abort here to handle burst and auto fire modes
-	if ( (UsesClipsForAmmo1() && m_iClip1 == 0) || ( !UsesClipsForAmmo1() && !pPlayer->GetAmmoCount(m_iPrimaryAmmoType) ) )
+	if ((UsesClipsForAmmo1() && m_iClip1 == 0) || (!UsesClipsForAmmo1() && !pPlayer->GetAmmoCount(m_iPrimaryAmmoType)))
 		return;
 
 	m_nShotsFired++;
@@ -68,7 +72,7 @@ void CHLMachineGun::PrimaryAttack( void )
 	float fireRate = GetFireRate();
 
 	// MUST call sound before removing a round from the clip of a CHLMachineGun
-	while ( m_flNextPrimaryAttack <= gpGlobals->curtime )
+	while (m_flNextPrimaryAttack <= gpGlobals->curtime)
 	{
 		WeaponSound(SINGLE, m_flNextPrimaryAttack);
 		m_flNextPrimaryAttack = m_flNextPrimaryAttack + fireRate;
@@ -76,26 +80,33 @@ void CHLMachineGun::PrimaryAttack( void )
 	}
 
 	// Make sure we don't fire more than the amount in the clip, if this weapon uses clips
-	if ( UsesClipsForAmmo1() )
+	if (UsesClipsForAmmo1())
 	{
-		if ( iBulletsToFire > m_iClip1 )
+		if (iBulletsToFire > m_iClip1)
 			iBulletsToFire = m_iClip1;
 		m_iClip1 -= iBulletsToFire;
 	}
 
 	m_iPrimaryAttacks++;
-	gamestats->Event_WeaponFired( pPlayer, true, GetClassname() );
+	gamestats->Event_WeaponFired(pPlayer, true, GetClassname());
 
 	// Fire the bullets
 	FireBulletsInfo_t info;
 	info.m_iShots = iBulletsToFire;
-	info.m_vecSrc = pPlayer->Weapon_ShootPosition( );
-	info.m_vecDirShooting = pPlayer->GetAutoaimVector( AUTOAIM_SCALE_DEFAULT );
-	info.m_vecSpread = pPlayer->GetAttackSpread( this );
+	info.m_vecSrc = pPlayer->Weapon_ShootPosition();
+	info.m_vecDirShooting = pPlayer->GetAutoaimVector(AUTOAIM_SCALE_DEFAULT);
+	info.m_vecSpread = pPlayer->GetAttackSpread(this);
 	info.m_flDistance = MAX_TRACE_LENGTH;
 	info.m_iAmmoType = m_iPrimaryAmmoType;
 	info.m_iTracerFreq = 2;
-	FireBullets( info );
+	if (sv_enable_hitscan_weapons.GetBool())
+	{
+		FireBullets(info);
+	}
+	else
+	{
+		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+	}
 
 	//Factor in the view kick
 	AddViewKick();
