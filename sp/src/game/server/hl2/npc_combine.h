@@ -115,6 +115,8 @@ public:
 
 	Class_T			Classify( void );
 	bool			IsElite() { return m_fIsElite; }
+	bool			IsSuppressor() { return m_fIsSuppressor; }
+	bool			IsCharger() { return m_fIsCharger; }
 #ifdef MAPBASE
 	bool			IsAltFireCapable();
 	bool			IsGrenadeCapable();
@@ -379,6 +381,8 @@ public:
 	int				m_iLastAnimEventHandled;
 #endif
 	bool			m_fIsElite;
+	bool			m_fIsSuppressor;
+	bool			m_fIsCharger;
 #ifndef MAPBASE // CAI_GrenadeUser
 	Vector			m_vecAltFireTarget;
 #endif
