@@ -18,8 +18,9 @@
 
 class CNPC_Cremator : public CAI_BaseNPC
 {
-public:
 	DECLARE_CLASS(CNPC_Cremator, CAI_BaseNPC);
+public:
+	CNPC_Cremator();
 
 	void	Spawn(void);
 	void	Precache(void);
@@ -31,7 +32,7 @@ LINK_ENTITY_TO_CLASS(npc_cremator, CNPC_Cremator);
 
 CNPC_Cremator::CNPC_Cremator()
 {
-	VScriptRunScript("npcs/entities/cremator", true);
+	RunScriptFile("npcs/entities/cremator");
 }
 
 void CNPC_Cremator::Spawn(void)
