@@ -1419,6 +1419,58 @@ int CNPC_Citizen::SelectSchedule()
 	}
 #endif
 
+	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
+	{
+		if (m_NPCState == NPC_STATE_COMBAT)
+		{
+			if (HasCondition(COND_LIGHT_DAMAGE) || HasCondition(COND_HEAVY_DAMAGE))
+			{
+				if (GetEnemy() != NULL && GetEnemy()->IsPlayer() && FInViewCone(GetEnemy()))
+				{
+					// I'm not equipped to deal with this!
+					return SCHED_TAKE_COVER_FROM_ENEMY;
+				}
+			}
+
+			if (HasCondition(COND_HEAR_COMBAT))
+			{
+				CSound* pSound = GetBestSound();
+
+				if (pSound && pSound->IsSoundType(SOUND_COMBAT))
+				{
+					if (m_pSquad && m_pSquad->GetSquadMemberNearestTo(pSound->GetSoundReactOrigin()) == this && OccupyStrategySlot(SQUAD_SLOT_INVESTIGATE_SOUND))
+					{
+						return SCHED_INVESTIGATE_SOUND;
+					}
+				}
+			}
+
+			if (HasCondition(COND_NEW_ENEMY))
+			{
+				CBaseEntity* pEnemy = GetEnemy();
+				bool bFirstContact = false;
+				float flTimeSinceFirstSeen = gpGlobals->curtime - GetEnemies()->FirstTimeSeen(pEnemy);
+
+				if (flTimeSinceFirstSeen < 3.0f)
+					bFirstContact = true;
+
+				if (m_pSquad && pEnemy)
+				{
+					if (HasCondition(COND_ENEMY_OCCLUDED))
+					{
+						if (!bFirstContact && OccupyStrategySlotRange(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
+						{
+							if (random->RandomInt(0, 100) < 60)
+							{
+								return SCHED_ESTABLISH_LINE_OF_FIRE;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 #ifdef MAPBASE
 	if ( GetActiveWeapon() && EntIsClass(GetActiveWeapon(), gm_isz_class_RPG) )
 	{
