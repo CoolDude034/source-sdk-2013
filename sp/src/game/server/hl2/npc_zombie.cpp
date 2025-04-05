@@ -1336,7 +1336,7 @@ LINK_ENTITY_TO_CLASS(npc_zombie_random, CZombieRandom);
 CZombieRandom::CZombieRandom()
 {
 	SetModelName(AllocPooledString("models/zombie_new/classic_new.mdl"));
-	VScriptRunScript("npcs/random_zombies", true);
+	RunScriptFile("npcs/random_zombies");
 }
 
 //-----------------------------------------------------------------------------
