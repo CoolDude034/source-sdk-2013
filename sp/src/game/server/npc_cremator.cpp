@@ -54,6 +54,8 @@ void CNPC_Cremator::Spawn(void)
 	AddEFlags(EFL_NO_DISSOLVE | EFL_NO_MEGAPHYSCANNON_RAGDOLL | EFL_NO_PHYSCANNON_INTERACTION);
 
 	BaseClass::Spawn();
+
+	NPCInit();
 }
 
 //-----------------------------------------------------------------------------
