@@ -29,6 +29,11 @@ public:
 
 LINK_ENTITY_TO_CLASS(npc_cremator, CNPC_Cremator);
 
+CNPC_Cremator::CNPC_Cremator()
+{
+	VScriptRunScript("npcs/entities/cremator", true);
+}
+
 void CNPC_Cremator::Spawn(void)
 {
 	SetModelName(AllocPooledString(CREMATOR_MODEL_NAME));
