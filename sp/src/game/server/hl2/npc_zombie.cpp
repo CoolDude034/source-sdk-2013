@@ -1305,3 +1305,90 @@ void CZombieCustom::PostConstructor(const char *szClassname)
 	CreateExpresser();
 }
 #endif
+
+class CZombieRandom : public CAI_ExpresserHost<CZombie>
+{
+	DECLARE_DATADESC();
+	DECLARE_CLASS(CZombieRandom, CAI_ExpresserHost<CZombie>);
+
+public:
+	CZombieRandom();
+
+	void Spawn(void);
+	void Precache(void);
+
+	void SetZombieModel(void);
+
+	virtual const char* GetLegsModel(void) { return "models/zombie_new/classic_new_legs.mdl"; }
+	virtual const char* GetTorsoModel(void) { return "models/zombie_new/classic_new_torso.mdl"; }
+	virtual const char* GetHeadcrabClassname(void) { return "npc_headcrab"; }
+};
+
+BEGIN_DATADESC(CZombieRandom)
+END_DATADESC()
+
+LINK_ENTITY_TO_CLASS(npc_zombie_random, CZombieRandom);
+
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+CZombieRandom::CZombieRandom()
+{
+	SetModelName(AllocPooledString("models/zombie_new/classic_new.mdl"));
+	VScriptRunScript("npcs/random_zombies", true);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CZombieRandom::Spawn(void)
+{
+	BaseClass::Spawn();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CZombieRandom::Precache(void)
+{
+	BaseClass::Precache();
+
+	PrecacheModel(STRING(GetModelName()));
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CZombieRandom::SetZombieModel(void)
+{
+	Hull_t lastHull = GetHullType();
+
+	if (m_fIsTorso)
+	{
+		SetModel(GetTorsoModel());
+		SetHullType(HULL_TINY);
+	}
+	else
+	{
+		SetModel(STRING(GetModelName()));
+		SetHullType(HULL_HUMAN);
+	}
+
+	SetBodygroup(ZOMBIE_BODYGROUP_HEADCRAB, !m_fIsHeadless);
+
+	SetHullSizeNormal(true);
+	SetDefaultEyeOffset();
+	SetActivity(ACT_IDLE);
+
+	// hull changed size, notify vphysics
+	// UNDONE: Solve this generally, systematically so other
+	// NPCs can change size
+	if (lastHull != GetHullType())
+	{
+		if (VPhysicsGetObject())
+		{
+			SetupVPhysicsHull();
+		}
+	}
+}
