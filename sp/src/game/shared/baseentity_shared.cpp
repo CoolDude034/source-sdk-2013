@@ -83,7 +83,8 @@ ConVar	ai_shot_bias_min( "ai_shot_bias_min", "-1.0", FCVAR_REPLICATED );
 ConVar	ai_shot_bias_max( "ai_shot_bias_max", "1.0", FCVAR_REPLICATED );
 ConVar	ai_debug_shoot_positions( "ai_debug_shoot_positions", "0", FCVAR_REPLICATED | FCVAR_CHEAT );
 
-ConVar sv_enable_hitscan_weapons("sv_enable_hitscan_weapons", "0", FCVAR_HIDDEN | FCVAR_REPLICATED);
+// Toggle hitscan weapons
+ConVar sv_enable_hitscan_weapons("sv_enable_hitscan_weapons", "0", FCVAR_CHEAT | FCVAR_HIDDEN | FCVAR_REPLICATED);
 
 // Bullet travel time
 ConVar sk_bullet_speed("sk_bullet_speed", "2500", FCVAR_HIDDEN | FCVAR_REPLICATED);
