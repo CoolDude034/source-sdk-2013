@@ -259,6 +259,8 @@ DEFINE_FIELD( m_vecAltFireTarget, FIELD_VECTOR ),
 DEFINE_KEYFIELD( m_iTacticalVariant, FIELD_INTEGER, "tacticalvariant" ),
 DEFINE_KEYFIELD( m_iPathfindingVariant, FIELD_INTEGER, "pathfindingvariant" ),
 DEFINE_KEYFIELD(m_bIsShield, FIELD_BOOLEAN, "IsShield"),
+DEFINE_KEYFIELD(m_fIsSuppressor, FIELD_BOOLEAN, "IsSuppressor"),
+DEFINE_KEYFIELD(m_fIsCharger, FIELD_BOOLEAN, "IsCharger"),
 
 END_DATADESC()
 
