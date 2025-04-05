@@ -50,6 +50,7 @@ static string_t SPAWN_TYPE_NEAREST = AllocPooledString("nearest");
 
 CLogicAssault::CLogicAssault()
 {
+	VScriptRunScript("assault_wave_manager", true);
 }
 
 void CLogicAssault::Spawn(void)
@@ -112,9 +113,6 @@ void CLogicAssault::Spawn(void)
 		m_bShouldUpdateEnemies = true;
 	}
 	m_iMinEnemiesToKillToProgressCounter = m_iMinEnemiesToKillToProgress;
-
-	// Run the assault_wave_manager.nut VScript
-	RunScriptFile("assault_wave_manager");
 	if (m_bDisabled)
 	{
 		//wait to be activated.
