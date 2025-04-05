@@ -33,6 +33,9 @@ ConVar	sk_combine_s_kick( "sk_combine_s_kick","0");
 
 ConVar sk_combine_guard_health( "sk_combine_guard_health", "0");
 ConVar sk_combine_guard_kick( "sk_combine_guard_kick", "0");
+
+ConVar sk_combine_suppressor_health("sk_combine_suppressor_health", "80");
+ConVar sk_combine_charger_health("sk_combine_charger_health", "100");
  
 // Whether or not the combine guard should spawn health on death
 ConVar combine_guard_spawn_health( "combine_guard_spawn_health", "1" );
@@ -65,6 +68,14 @@ extern Activity ACT_WALK_MARCH;
 //-----------------------------------------------------------------------------
 void CNPC_CombineS::Spawn( void )
 {
+	if (IsSuppressor())
+	{
+		SetModelName(AllocPooledString("models/combine_soldier_suppressor.mdl"));
+	}
+	else if (IsCharger())
+	{
+		SetModelName(AllocPooledString("models/combine_soldier_charger.mdl"));
+	}
 	Precache();
 	SetModel( STRING( GetModelName() ) );
 
@@ -74,6 +85,18 @@ void CNPC_CombineS::Spawn( void )
 		SetHealth( sk_combine_guard_health.GetFloat() );
 		SetMaxHealth( sk_combine_guard_health.GetFloat() );
 		SetKickDamage( sk_combine_guard_kick.GetFloat() );
+	}
+	else if (IsCharger())
+	{
+		SetHealth(sk_combine_charger_health.GetFloat());
+		SetMaxHealth(sk_combine_charger_health.GetFloat());
+		SetKickDamage(sk_combine_guard_kick.GetFloat());
+	}
+	else if (IsSuppressor())
+	{
+		SetHealth(sk_combine_suppressor_health.GetFloat());
+		SetMaxHealth(sk_combine_suppressor_health.GetFloat());
+		SetKickDamage(sk_combine_guard_kick.GetFloat());
 	}
 	else
 	{
