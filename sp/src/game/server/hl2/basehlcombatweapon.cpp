@@ -105,6 +105,7 @@ void CHLMachineGun::PrimaryAttack(void)
 	}
 	else
 	{
+		info.m_pAttacker = pPlayer;
 		FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
 	}
 
