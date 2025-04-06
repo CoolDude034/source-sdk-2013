@@ -148,6 +148,8 @@ public:
 
 	void	PlayFlinchGesture( void );
 
+	bool	IsElite() { return m_bIsElite; }
+
 protected:
 	// Determines the best type of flinch anim to play.
 	virtual Activity GetFlinchActivity( bool bHeavyDamage, bool bGesture );
@@ -521,6 +523,9 @@ private:
 	float			m_flPreChaseYaw;
 	int				m_nNumWarnings;
 	int				m_iNumPlayerHits;
+
+	// Types
+	bool			m_bIsElite;
 
 	// Outputs
 	COutputEvent	m_OnStunnedPlayer;
