@@ -128,8 +128,7 @@ ConVar  metropolice_charge("metropolice_charge", "1" );
 ConVar	metropolice_new_component_behavior("metropolice_new_component_behavior", "1");
 #endif
 
-static string_t metropolice_elite_model = AllocPooledString("models/elite_police.mdl");
-static string_t d1_trainstation_02 = AllocPooledString("d1_trainstation_02");
+static const string_t d1_trainstation_02 = AllocPooledString("d1_trainstation_02");
 
 // How many clips of pistol ammo a metropolice carries.
 #define METROPOLICE_NUM_CLIPS			5
@@ -238,6 +237,7 @@ BEGIN_DATADESC( CNPC_MetroPolice )
 	//								m_FollowBehavior (auto saved by AI)
 
 	DEFINE_KEYFIELD( m_iManhacks, FIELD_INTEGER, "manhacks" ),
+	DEFINE_KEYFIELD( m_bIsElite, FIELD_BOOLEAN, "IsElite" ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "EnableManhackToss", InputEnableManhackToss ),
 #ifdef MAPBASE
 	DEFINE_INPUTFUNC( FIELD_VOID, "DisableManhackToss", InputDisableManhackToss ),
@@ -690,6 +690,10 @@ bool CNPC_MetroPolice::CreateComponents()
 //-----------------------------------------------------------------------------
 void CNPC_MetroPolice::Spawn( void )
 {
+	if (IsElite())
+	{
+		SetModelName(AllocPooledString("models/elite_police.mdl"));
+	}
 	Precache();
 
 #ifdef _XBOX
@@ -713,20 +717,24 @@ void CNPC_MetroPolice::Spawn( void )
 		AddSpawnFlags( SF_NPC_GAG );
 	}
 
-	if (!m_bSimpleCops)
+	if (IsElite())
 	{
-		if (GetModelName() == metropolice_elite_model)
+		m_iHealth = sk_metropolice_elite_health.GetFloat();
+		if (m_spawnEquipment == NULL_STRING)
 		{
-			m_iHealth = sk_metropolice_elite_health.GetFloat();
+			m_spawnEquipment = AllocPooledString("weapon_smg1");
+		}
+	}
+	else
+	{
+		if (m_bSimpleCops)
+		{
+			m_iHealth = sk_metropolice_simple_health.GetFloat();
 		}
 		else
 		{
 			m_iHealth = sk_metropolice_health.GetFloat();
 		}
-	}
-	else
-	{
-		m_iHealth = sk_metropolice_simple_health.GetFloat();
 	}
 
 	m_flFieldOfView		= -0.2;// indicates the width of this NPC's forward view cone ( as a dotproduct result )
@@ -751,11 +759,11 @@ void CNPC_MetroPolice::Spawn( void )
 	// Eh whatever doesn't matter, who even would see this
 	if (m_spawnEquipment == NULL_STRING || m_spawnEquipment == gm_isz_class_Pistol)
 	{
-		if (GetModelName() != metropolice_elite_model && random->RandomFloat() < 0.25F)
+		if (!IsElite() && random->RandomFloat() < 0.25F)
 		{
 			m_spawnEquipment = AllocPooledString("weapon_glock18");
 		}
-		else if (GetModelName() == metropolice_elite_model && random->RandomFloat() < 0.25F)
+		else if (IsElite() && random->RandomFloat() < 0.25F)
 		{
 			m_spawnEquipment = gm_isz_class_357;
 		}
@@ -818,11 +826,11 @@ void CNPC_MetroPolice::Spawn( void )
 	m_nBurstReloadCount = METROPOLICE_BURST_RELOAD_COUNT;
 	SetBurstMode( false );
 
-	// Clear out spawnflag if we're missing the smg1
+	// Clear out spawnflag if we don't have a two-handed weapon (mp7, mp5, spaz-12, remington, etc)
 	if( HasSpawnFlags( SF_METROPOLICE_ALWAYS_STITCH ) )
 	{
 #ifdef MAPBASE
-		if ( !Weapon_OwnsThisType( STRING(gm_isz_class_SMG1) ) )
+		if ( !Weapon_OwnsThisType( STRING(gm_isz_class_SMG1) ) || !Weapon_OwnsThisType("weapon_mp5") || !Weapon_OwnsThisType("weapon_shotgun") || !Weapon_OwnsThisType("weapon_remington870") )
 #else
 		if ( !Weapon_OwnsThisType( "weapon_smg1" ) )
 #endif
