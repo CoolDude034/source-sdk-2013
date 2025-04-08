@@ -35,6 +35,9 @@ const float AI_EFFICIENT_NPC_SEARCH_TIME = .35;
 const float AI_HIGH_PRIORITY_SEARCH_TIME = 0.15;
 const float AI_MISC_SEARCH_TIME  = 0.45;
 
+ConVar ai_detection_stealth_enabled("ai_detection_stealth_enabled", "0", FCVAR_CHEAT | FCVAR_REPLICATED | FCVAR_HIDDEN);
+ConVar ai_detection_stealth_range("ai_detection_stealth_range", "400", FCVAR_CHEAT | FCVAR_REPLICATED | FCVAR_HIDDEN);
+
 //-----------------------------------------------------------------------------
 
 CAI_SensedObjectsManager g_AI_SensedObjectsManager;
@@ -646,6 +649,37 @@ CSound *CAI_Senses::GetClosestSound( bool fScent, int validTypes, bool bUsePrior
 
 //-----------------------------------------------------------------------------
 
+bool CAI_Senses::IsHuman()
+{
+	bool isHumanoid = false;
+	switch (GetOuter()->Classify())
+	{
+	case CLASS_CITIZEN_PASSIVE:
+		isHumanoid = true;
+		break;
+	case CLASS_CITIZEN_REBEL:
+		isHumanoid = true;
+		break;
+	case CLASS_COMBINE:
+		isHumanoid = true;
+		break;
+	case CLASS_CONSCRIPT:
+		isHumanoid = true;
+		break;
+	case CLASS_METROPOLICE:
+		isHumanoid = true;
+		break;
+	}
+	return false;
+}
+
+const float CAI_Senses::GetDistLook()
+{
+	if (IsHuman() && ai_detection_stealth_enabled.GetBool())
+		return ai_detection_stealth_range.GetFloat();
+	return m_LookDist;
+}
+
 void CAI_Senses::PerformSensing( void )
 {
 	AI_PROFILE_SCOPE	(CAI_BaseNPC_PerformSensing);
@@ -654,7 +688,7 @@ void CAI_Senses::PerformSensing( void )
 	//  Look	
 	// -----------------
 	if( !HasSensingFlags(SENSING_FLAGS_DONT_LOOK) )
-		Look( m_LookDist );
+		Look( GetDistLook() );
 	
 	// ------------------
 	//  Listen
