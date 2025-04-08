@@ -63,8 +63,10 @@ public:
 		m_SeenArrays[2] = &m_SeenMisc;
 		m_iSensingFlags = SENSING_FLAGS_NONE;
 	}
+
+	bool			IsHuman();
 	
-	float			GetDistLook() const				{ return m_LookDist; }
+	const float			GetDistLook();
 	void			SetDistLook( float flDistLook ) { m_LookDist = flDistLook; }
 
 	void			PerformSensing();
