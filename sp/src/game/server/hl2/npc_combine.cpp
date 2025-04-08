@@ -63,6 +63,10 @@ ConVar npc_combine_min_crouch_dist("npc_combine_min_crouch_dist", "256.0", FCVAR
 
 ConVar npc_combine_elites_always_spawn_with_ar2("npc_combine_elites_always_spawn_with_ar2", "1", FCVAR_HIDDEN);
 ConVar npc_combine_allow_climbing("npc_combine_allow_climbing", "0", FCVAR_HIDDEN);
+
+ConVar npc_combine_suppressor_retreat_distance("npc_combine_suppressor_retreat_distance", "7.0", FCVAR_HIDDEN);
+ConVar npc_combine_charger_chase_distance("npc_combine_charger_chase_distance", "25.0", FCVAR_HIDDEN);
+ConVar npc_combine_charger_pressure_distance("npc_combine_charger_pressure_distance", "30.0", FCVAR_HIDDEN);
 #endif
 
 #define COMBINE_SKIN_DEFAULT		0
@@ -1928,6 +1932,34 @@ int CNPC_Combine::SelectCombatSchedule()
 		if( flTimeSinceFirstSeen < 3.0f )
 			bFirstContact = true;
 
+		// I am squadless
+		if ( !m_pSquad && pEnemy )
+		{
+			if ( HasCondition(COND_SEE_ENEMY) )
+			{
+				AnnounceEnemyType( pEnemy );
+			}
+
+			if (IsSuppressor())
+			{
+				// Now we're close to our enemy, back away.
+				if (HasCondition(COND_SEE_ENEMY) && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) < Square(npc_combine_suppressor_retreat_distance.GetFloat() * 12.0f) || HasCondition(COND_MOBBED_BY_ENEMIES))
+					return SCHED_BACK_AWAY_FROM_ENEMY;
+
+				if (HasCondition(COND_CAN_RANGE_ATTACK1) && IsSuppressor())
+					return SCHED_COMBINE_SUPPRESS;
+			}
+			if (IsCharger())
+			{
+				// Enemy is too far away from us, chase them.
+				if (GetEnemy()->IsPlayer() && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) > Square(npc_combine_charger_chase_distance.GetFloat() * 12.0f))
+					return SCHED_COMBINE_CHARGE_PLAYER;
+				// Now we're close to our enemy, pressure them.
+				if (GetEnemy()->IsPlayer() && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) < Square(npc_combine_charger_pressure_distance.GetFloat() * 12.0f))
+					return SCHED_COMBINE_PRESS_ATTACK;
+			}
+		}
+
 		if ( m_pSquad && pEnemy )
 		{
 			if ( HasCondition( COND_SEE_ENEMY ) )
@@ -1935,90 +1967,66 @@ int CNPC_Combine::SelectCombatSchedule()
 				AnnounceEnemyType( pEnemy );
 			}
 
-			// Must be regular unit
-			bool m_bCanPerformSquadTactics = !IsShield() && !IsSuppressor() && !IsCharger();
-
-			if (m_bCanPerformSquadTactics)
+			if (HasCondition(COND_CAN_RANGE_ATTACK1) && OccupyStrategySlot(SQUAD_SLOT_ATTACK1) || HasCondition(COND_CAN_RANGE_ATTACK1) && IsSuppressor())
 			{
-				if (HasCondition(COND_CAN_RANGE_ATTACK1) && OccupyStrategySlot(SQUAD_SLOT_ATTACK1))
+				// Start suppressing if someone isn't firing already (SLOT_ATTACK1). This means
+				// I'm the guy who spotted the enemy, I should react immediately.
+				return SCHED_COMBINE_SUPPRESS;
+			}
+
+			if (m_pSquad->IsLeader(this) || (m_pSquad->GetLeader() && m_pSquad->GetLeader()->GetEnemy() != pEnemy))
+			{
+				// I'm the leader, but I didn't get the job suppressing the enemy. We know this because
+				// This code only runs if the code above didn't assign me SCHED_COMBINE_SUPPRESS.
+				if (HasCondition(COND_CAN_RANGE_ATTACK1) && OccupyStrategySlotRange(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
 				{
-					// Start suppressing if someone isn't firing already (SLOT_ATTACK1). This means
-					// I'm the guy who spotted the enemy, I should react immediately.
-					return SCHED_COMBINE_SUPPRESS;
+					return SCHED_RANGE_ATTACK1;
 				}
 
-				if (m_pSquad->IsLeader(this) || (m_pSquad->GetLeader() && m_pSquad->GetLeader()->GetEnemy() != pEnemy))
+				if (HasCondition(COND_WEAPON_HAS_LOS) && IsStrategySlotRangeOccupied(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
 				{
-					// I'm the leader, but I didn't get the job suppressing the enemy. We know this because
-					// This code only runs if the code above didn't assign me SCHED_COMBINE_SUPPRESS.
-					if (HasCondition(COND_CAN_RANGE_ATTACK1) && OccupyStrategySlotRange(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
+					// If everyone else is attacking and I have line of fire, wait for a chance to cover someone.
+					if (OccupyStrategySlot(SQUAD_SLOT_OVERWATCH))
 					{
-						return SCHED_RANGE_ATTACK1;
-					}
-
-					if (HasCondition(COND_WEAPON_HAS_LOS) && IsStrategySlotRangeOccupied(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
-					{
-						// If everyone else is attacking and I have line of fire, wait for a chance to cover someone.
-						if (OccupyStrategySlot(SQUAD_SLOT_OVERWATCH))
-						{
-							return SCHED_COMBINE_ENTER_OVERWATCH;
-						}
-					}
-
-					// Overwatch, sector is not secure.
-					if (HasCondition(COND_MOBBED_BY_ENEMIES))
-					{
-						return SCHED_BACK_AWAY_FROM_ENEMY;
+						return SCHED_COMBINE_ENTER_OVERWATCH;
 					}
 				}
-				else
+
+				// Overwatch, sector is not secure.
+				if (HasCondition(COND_MOBBED_BY_ENEMIES))
 				{
-					if (m_pSquad->GetLeader() && FOkToMakeSound(SENTENCE_PRIORITY_MEDIUM))
-					{
-						JustMadeSound(SENTENCE_PRIORITY_MEDIUM);	// squelch anything that isn't high priority so the leader can speak
-					}
-
-					// First contact, and I'm solo, or not the squad leader.
-					if (HasCondition(COND_SEE_ENEMY) && CanGrenadeEnemy())
-					{
-						if (OccupyStrategySlot(SQUAD_SLOT_GRENADE1))
-						{
-							return SCHED_RANGE_ATTACK2;
-						}
-					}
-
-					if (!bFirstContact && OccupyStrategySlotRange(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
-					{
-						if (random->RandomInt(0, 100) < 60)
-						{
-							return SCHED_ESTABLISH_LINE_OF_FIRE;
-						}
-						else
-						{
-							return SCHED_COMBINE_PRESS_ATTACK;
-						}
-					}
-
-					return SCHED_TAKE_COVER_FROM_ENEMY;
+					return SCHED_BACK_AWAY_FROM_ENEMY;
 				}
 			}
 			else
 			{
-				if (IsSuppressor())
+				if (m_pSquad->GetLeader() && FOkToMakeSound(SENTENCE_PRIORITY_MEDIUM))
 				{
-					// Now we're close to our enemy, back away.
-					if (HasCondition(COND_SEE_ENEMY) && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) < Square(30.0f * 12.0f) || HasCondition(COND_MOBBED_BY_ENEMIES))
-						return SCHED_BACK_AWAY_FROM_ENEMY;
+					JustMadeSound(SENTENCE_PRIORITY_MEDIUM);	// squelch anything that isn't high priority so the leader can speak
 				}
-				if (IsCharger())
+
+				// First contact, and I'm solo, or not the squad leader.
+				if (HasCondition(COND_SEE_ENEMY) && CanGrenadeEnemy())
 				{
-					// Enemy is too far away from us, chase them.
-					if (GetEnemy()->IsPlayer() && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) > Square(30.0f * 12.0f))
-						return SCHED_COMBINE_CHARGE_PLAYER;
-					// Now we're close to our enemy, pressure them.
-					if (GetEnemy()->IsPlayer() && GetAbsOrigin().DistToSqr(GetEnemy()->GetAbsOrigin()) < Square(30.0f * 12.0f))
+					if (OccupyStrategySlot(SQUAD_SLOT_GRENADE1))
+					{
+						return SCHED_RANGE_ATTACK2;
+					}
+				}
+
+				if (!bFirstContact && OccupyStrategySlotRange(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
+				{
+					if (random->RandomInt(0, 100) < 60)
+					{
+						return SCHED_ESTABLISH_LINE_OF_FIRE;
+					}
+					else
+					{
 						return SCHED_COMBINE_PRESS_ATTACK;
+					}
 				}
+
+				return SCHED_TAKE_COVER_FROM_ENEMY;
 			}
 		}
 	}
@@ -2028,7 +2036,7 @@ int CNPC_Combine::SelectCombatSchedule()
 	// ---------------------
 	if ( ( HasCondition ( COND_NO_PRIMARY_AMMO ) || HasCondition ( COND_LOW_PRIMARY_AMMO ) ) && !HasCondition( COND_CAN_MELEE_ATTACK1) )
 	{
-		if (IsSuppressor() || IsCharger())
+		if (IsSuppressor() || IsCharger() || IsShield() && random->RandomFloat() < 0.25F)
 		{
 			return SCHED_RELOAD;
 		}
@@ -2041,9 +2049,9 @@ int CNPC_Combine::SelectCombatSchedule()
 	// ----------------------
 	// LIGHT DAMAGE
 	// 
-	// Suppressors, Chargers and Shields do not take cover from light damage.
+	// Suppressors, Chargers do not take cover from light damage.
 	// ----------------------
-	if ( HasCondition( COND_LIGHT_DAMAGE ) && !IsSuppressor() && !IsCharger() && !IsShield() )
+	if ( HasCondition( COND_LIGHT_DAMAGE ) && !IsSuppressor() && !IsCharger() )
 	{
 		if ( GetEnemy() != NULL )
 		{
@@ -2139,14 +2147,10 @@ int CNPC_Combine::SelectCombatSchedule()
 		if (IsShield())
 			// Charge into enemy's cover
 			return SCHED_ESTABLISH_LINE_OF_FIRE;
-		if (IsSuppressor())
+		if (IsSuppressor() || IsCharger())
 		{
 			// Face our enemy.
 			return SCHED_COMBINE_COMBAT_FACE;
-		}
-		if (IsCharger())
-		{
-			return SCHED_COMBINE_PRESS_ATTACK;
 		}
 
 		AnnounceAssault();
@@ -2388,7 +2392,7 @@ int CNPC_Combine::SelectFailSchedule( int failedSchedule, int failedTask, AI_Tas
 		{
 			// This eases the effects of an unfortunate bug that usually plagues shotgunners. Since their rate of fire is low,
 			// they spend relatively long periods of time without an attack squad slot. If you corner a shotgunner, usually 
-			// the other memebers of the squad will hog all of the attack slots and pick schedules to move to establish line of
+			// the other members of the squad will hog all of the attack slots and pick schedules to move to establish line of
 			// fire. During this time, the shotgunner is prevented from attacking. If he also cannot find cover (the fallback case)
 			// he will stand around like an idiot, right in front of you. Instead of this, we have him run up to you for a melee attack.
 			return SCHED_COMBINE_MOVE_TO_MELEE;
@@ -2403,7 +2407,11 @@ int CNPC_Combine::SelectFailSchedule( int failedSchedule, int failedTask, AI_Tas
 //-----------------------------------------------------------------------------
 bool CNPC_Combine::ShouldChargePlayer()
 {
-	return GetEnemy() && GetEnemy()->IsPlayer() && PlayerHasMegaPhysCannon() && !IsLimitingHintGroups() && !IsShield();
+	if (IsShield())
+		return false;
+	if (IsCharger())
+		return true;
+	return GetEnemy() && GetEnemy()->IsPlayer() && PlayerHasMegaPhysCannon() && !IsLimitingHintGroups();
 }
 
 
