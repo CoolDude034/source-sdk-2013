@@ -182,8 +182,8 @@ private:
 	Vector				 m_vPositionCharged;
 };
 
-LINK_ENTITY_TO_CLASS( npc_zombie, CZombie );
-LINK_ENTITY_TO_CLASS( npc_zombie_torso, CZombie );
+//LINK_ENTITY_TO_CLASS( npc_zombie, CZombie );
+//LINK_ENTITY_TO_CLASS( npc_zombie_torso, CZombie );
 
 //---------------------------------------------------------
 //---------------------------------------------------------
@@ -1327,6 +1327,8 @@ public:
 BEGIN_DATADESC(CZombieRandom)
 END_DATADESC()
 
+LINK_ENTITY_TO_CLASS(npc_zombie, CZombieRandom); // Redirect npc_zombie to spawn CZombieRandom, CZombie itself is used as a base
+LINK_ENTITY_TO_CLASS(npc_zombie_torso, CZombieRandom);
 LINK_ENTITY_TO_CLASS(npc_zombie_random, CZombieRandom);
 
 
