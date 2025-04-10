@@ -347,6 +347,8 @@ private:
 	bool			m_bAlternateAiming;
 #endif
 
+	bool			m_bIsHostile;
+
 	CSimpleSimTimer	m_AutoSummonTimer;
 	Vector			m_vAutoSummonAnchor;
 
