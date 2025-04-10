@@ -382,6 +382,8 @@ BEGIN_DATADESC( CNPC_Citizen )
 	DEFINE_KEYFIELD(	m_bAlternateAiming,			FIELD_BOOLEAN, "AlternateAiming" ),
 #endif
 
+	DEFINE_KEYFIELD(	m_bIsHostile,				FIELD_BOOLEAN, "hostile"), // Compatibility with Garry's Mod hostile value, assigns citizen to combine class
+
 	DEFINE_OUTPUT(		m_OnJoinedPlayerSquad,	"OnJoinedPlayerSquad" ),
 	DEFINE_OUTPUT(		m_OnLeftPlayerSquad,	"OnLeftPlayerSquad" ),
 	DEFINE_OUTPUT(		m_OnFollowOrder,		"OnFollowOrder" ),
@@ -1037,6 +1039,8 @@ Class_T	CNPC_Citizen::Classify()
 			return CLASS_COMBINE;
 		return CLASS_METROPOLICE;
 	}
+	if (m_bIsHostile)
+		return CLASS_COMBINE;
 	if (NameMatches("npc_rioter_*"))
 		return CLASS_CITIZEN_REBEL;
 	if (m_Type == CT_REBEL_HOSTILE) // conscripts are used for hostile rebels spawned as part of assaults
