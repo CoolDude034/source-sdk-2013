@@ -13,6 +13,7 @@
 #include "team.h"
 #include "ai_basenpc.h"
 #include "saverestore_utlvector.h"
+#include "globalstate.h"
 
 #ifdef PORTAL
 	#include "portal_util_shared.h"
@@ -35,7 +36,6 @@ const float AI_EFFICIENT_NPC_SEARCH_TIME = .35;
 const float AI_HIGH_PRIORITY_SEARCH_TIME = 0.15;
 const float AI_MISC_SEARCH_TIME  = 0.45;
 
-ConVar ai_detection_stealth_enabled("ai_detection_stealth_enabled", "0", FCVAR_CHEAT | FCVAR_REPLICATED | FCVAR_HIDDEN);
 ConVar ai_detection_stealth_range("ai_detection_stealth_range", "400", FCVAR_CHEAT | FCVAR_REPLICATED | FCVAR_HIDDEN);
 
 //-----------------------------------------------------------------------------
@@ -675,7 +675,7 @@ bool CAI_Senses::IsHuman()
 
 const float CAI_Senses::GetDistLook()
 {
-	if (IsHuman() && ai_detection_stealth_enabled.GetBool())
+	if (IsHuman() && GlobalEntity_GetState("stealth_mode") == GLOBAL_ON)
 		return ai_detection_stealth_range.GetFloat();
 	return m_LookDist;
 }
