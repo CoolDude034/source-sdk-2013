@@ -12,7 +12,7 @@ public:
 	void Precache(void);
 	void AssaultThink(void);
 	void SUB_DoNothing(void) {};
-	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity = NULL);
+	bool HumanHullFits(const Vector& vecLocation);
 	bool CanMakeNPC(bool bIgnoreSolidEntities = false, CNPCSpawnDestination* pSpawnPoint = NULL);
 	CNPCSpawnDestination* FindSpawnDestination();
 	void DeathNotice(CBaseEntity* pChild);
@@ -29,6 +29,7 @@ private:
 
 	bool m_bDisabled;
 	bool m_bEndlessWaves; // if enabled, the m_iMaxWaves value is ignored and waves go on and on
+	bool m_bUseOverrides;
 	int m_iNumEnemies; // total enemies, counts each NPC spawned and killed
 	int m_iMinEnemiesToKillToProgress; // number of enemies to kill to advance the wave
 	int m_iMinEnemiesToKillToProgressCounter; // the counter for the above
