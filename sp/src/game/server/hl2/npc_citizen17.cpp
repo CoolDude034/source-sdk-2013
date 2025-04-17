@@ -148,10 +148,9 @@ ConVar	ai_follow_move_commands( "ai_follow_move_commands", "1" );
 ConVar	ai_citizen_debug_commander( "ai_citizen_debug_commander", "1" );
 #define DebuggingCommanderMode() (ai_citizen_debug_commander.GetBool() && (m_debugOverlays & OVERLAY_NPC_SELECTED_BIT))
 
-ConVar npc_citizen_surrender_auto_distance("npc_citizen_surrender_auto_distance", "720");
-ConVar npc_citizen_surrender_ammo_scale_min("npc_citizen_surrender_ammo_scale_min", "0.05");
-ConVar npc_citizen_surrender_ammo_scale_max("npc_citizen_surrender_ammo_scale_max", "0.10");
-ConVar npc_citizen_surrender_ammo_deplete_multiplier("npc_citizen_surrender_ammo_deplete_multiplier", "0.80");
+extern ConVar sk_npc_shotgun_chance;
+extern ConVar sk_npc_pistol_chance;
+extern ConVar sk_npc_smg_chance;
 
 //-----------------------------------------------------------------------------
 // Citizen expressions for the citizen expression types
@@ -637,18 +636,35 @@ void CNPC_Citizen::Spawn()
 	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
 	{
 		AddEFlags(EFL_NO_DISSOLVE);
-		AddContext("is_combine_security", "1"); // Give security unique responses
+		if (!HasContext("is_combine_security 1"))
+		{
+			AddContext("is_combine_security", "1"); // Give security unique responses
+		}
 		m_bDontPickupWeapons = true;
 
 		if (m_spawnEquipment == NULL_STRING || m_spawnEquipment == gm_isz_class_Pistol)
 		{
-			if (random->RandomFloat() < 0.25F)
+			if (random->RandomFloat() < sk_npc_pistol_chance.GetFloat())
 			{
 				m_spawnEquipment = AllocPooledString("weapon_glock18");
 			}
 			else
 			{
 				m_spawnEquipment = gm_isz_class_Pistol;
+			}
+		}
+		else if (m_spawnEquipment == gm_isz_class_Shotgun)
+		{
+			if (random->RandomFloat() < sk_npc_shotgun_chance.GetFloat())
+			{
+				m_spawnEquipment = AllocPooledString("weapon_remington870");
+			}
+		}
+		else if (m_spawnEquipment == gm_isz_class_SMG1)
+		{
+			if (random->RandomFloat() < sk_npc_smg_chance.GetFloat())
+			{
+				m_spawnEquipment = AllocPooledString("weapon_mp5");
 			}
 		}
 	}
