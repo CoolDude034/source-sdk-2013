@@ -27,9 +27,13 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+#ifdef GAME_DLL
+
 ConVar sk_npc_shotgun_chance("sk_npc_remington_chance", "0.25");
 ConVar sk_npc_pistol_chance("sk_npc_glock_chance", "0.25");
 ConVar sk_npc_smg_chance("sk_npc_smg_chance", "0.25");
+
+#endif
 
 
 REGISTER_GAMERULES_CLASS( CHalfLife2 );
