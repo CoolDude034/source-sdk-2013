@@ -69,6 +69,10 @@ ConVar npc_combine_charger_chase_distance("npc_combine_charger_chase_distance", 
 ConVar npc_combine_charger_pressure_distance("npc_combine_charger_pressure_distance", "30.0", FCVAR_HIDDEN);
 #endif
 
+extern ConVar sk_npc_shotgun_chance;
+extern ConVar sk_npc_pistol_chance;
+extern ConVar sk_npc_smg_chance;
+
 #define COMBINE_SKIN_DEFAULT		0
 #define COMBINE_SKIN_SHOTGUNNER		1
 
@@ -518,7 +522,7 @@ void CNPC_Combine::Spawn( void )
 	{
 		// "Ready to hammer in three... two... one..."
 		CapabilitiesRemove(bits_CAP_DUCK);
-		m_iTacticalVariant = TACTICAL_VARIANT_DEFAULT;
+		m_iTacticalVariant = TACTICAL_VARIANT_PRESSURE_ENEMY;
 		m_spawnEquipment = AllocPooledString("weapon_ar2");
 	}
 	else if (IsSuppressor())
@@ -534,7 +538,7 @@ void CNPC_Combine::Spawn( void )
 		CapabilitiesRemove(bits_CAP_DUCK);
 		CapabilitiesRemove(bits_CAP_INNATE_MELEE_ATTACK1);
 		m_iTacticalVariant = TACTICAL_VARIANT_DEFAULT;
-		if (random->RandomFloat() < 0.25F)
+		if (random->RandomFloat() < sk_npc_pistol_chance.GetFloat())
 		{
 			m_spawnEquipment = AllocPooledString("weapon_glock18");
 		}
@@ -546,13 +550,13 @@ void CNPC_Combine::Spawn( void )
 	else
 	{
 		// 25% chance to equip the MP5
-		if (m_spawnEquipment == gm_isz_class_SMG1 && random->RandomFloat() < 0.25F)
+		if (m_spawnEquipment == gm_isz_class_SMG1 && random->RandomFloat() < sk_npc_smg_chance.GetFloat())
 		{
 			m_spawnEquipment = AllocPooledString("weapon_mp5");
 		}
 
 		// 25% chance to equip the Remington 870
-		if (m_spawnEquipment == gm_isz_class_Shotgun && random->RandomFloat() < 0.25F)
+		if (m_spawnEquipment == gm_isz_class_Shotgun && random->RandomFloat() < sk_npc_shotgun_chance.GetFloat())
 		{
 			m_spawnEquipment = weapon_remington870;
 		}
