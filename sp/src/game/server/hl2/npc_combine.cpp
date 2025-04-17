@@ -2402,6 +2402,8 @@ int CNPC_Combine::SelectFailSchedule( int failedSchedule, int failedTask, AI_Tas
 	return BaseClass::SelectFailSchedule( failedSchedule, failedTask, taskFailCode );
 }
 
+static string_t d1_trainstation = AllocPooledString("d1_trainstation_02");
+
 //-----------------------------------------------------------------------------
 // Should we charge the player?
 //-----------------------------------------------------------------------------
@@ -2410,6 +2412,8 @@ bool CNPC_Combine::ShouldChargePlayer()
 	if (IsShield())
 		return false;
 	if (IsCharger())
+		return true;
+	if (GetEnemy() && GetEnemy()->IsPlayer() && gpGlobals->mapname == d1_trainstation && !IsLimitingHintGroups())
 		return true;
 	return GetEnemy() && GetEnemy()->IsPlayer() && PlayerHasMegaPhysCannon() && !IsLimitingHintGroups();
 }
