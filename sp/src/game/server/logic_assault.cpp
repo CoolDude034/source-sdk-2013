@@ -18,22 +18,44 @@
 #include "tier0/memdbgon.h"
 
 #define GENERIC_ASSAULT_FILE "scripts/assault_wavedata.txt"
-#define LEVEL_ASSAULT_TWEAK_FILE UTIL_VarArgs("scripts/%s_assault_wavedata.txt", STRING(gpGlobals->mapname))
-
 #define ASSAULT_SPAWN_POINT_NAME "info_assault_spawn_point"
 
 inline bool GetAssaultSettingsKeyValues(KeyValues* pKeyValues)
 {
-	// Try to load a map's specific wave data
-	// If that fails, just load the global one
-	if (pKeyValues->LoadFromFile(filesystem, LEVEL_ASSAULT_TWEAK_FILE, "MOD"))
-		return true;
 	return pKeyValues->LoadFromFile(filesystem, GENERIC_ASSAULT_FILE, "MOD");
 }
 
 LINK_ENTITY_TO_CLASS(logic_assault, CLogicAssault);
 
 BEGIN_DATADESC(CLogicAssault)
+
+DEFINE_KEYFIELD(m_bDisabled, FIELD_BOOLEAN, "Disabled"),
+
+//DEFINE_FIELD(m_bEndlessWaves, FIELD_BOOLEAN),
+DEFINE_FIELD(m_iMaxEnemies, FIELD_INTEGER),
+DEFINE_FIELD(m_iMinEnemiesToKillToProgress, FIELD_INTEGER),
+DEFINE_FIELD(m_iMinEnemiesToEndWave, FIELD_INTEGER),
+//DEFINE_FIELD(m_EnemyType, FIELD_STRING),
+//DEFINE_FIELD(m_EnemyModel, FIELD_MODELNAME),
+DEFINE_KEYFIELD(m_bUseOverrides, FIELD_BOOLEAN, "UseOverrides"),
+DEFINE_KEYFIELD(m_bEndlessWaves, FIELD_BOOLEAN, "EndlessWaves"),
+DEFINE_KEYFIELD(m_EnemyType, FIELD_STRING, "EnemyTypeOverride"),
+DEFINE_KEYFIELD(m_EnemyModel, FIELD_MODELNAME, "EnemyModelOverride"),
+DEFINE_KEYFIELD(m_SpawnType, FIELD_STRING, "SpawnType"),
+DEFINE_KEYFIELD(m_fSpawnDistance, FIELD_FLOAT, "SpawnDistance"),
+DEFINE_KEYFIELD(m_bShouldUpdateEnemies, FIELD_BOOLEAN, "ShouldUpdateEnemies"),
+DEFINE_KEYFIELD(m_iMaxWaves, FIELD_INTEGER, "MaxWaves"),
+
+DEFINE_FIELD(m_fShotgunChance, FIELD_FLOAT),
+DEFINE_FIELD(m_fAR2Chance, FIELD_FLOAT),
+DEFINE_FIELD(m_fGrenadeChance, FIELD_FLOAT),
+DEFINE_FIELD(m_fEnemyCitizenMedicChance, FIELD_FLOAT),
+DEFINE_FIELD(m_iTacticalVariant, FIELD_INTEGER),
+DEFINE_FIELD(m_flSpawnFrequency, FIELD_FLOAT),
+DEFINE_FIELD(m_flTimeUntilNextWave, FIELD_TIME),
+//DEFINE_FIELD(m_SpawnType, FIELD_STRING),
+//DEFINE_FIELD(m_fSpawnDistance, FIELD_FLOAT),
+//DEFINE_FIELD(m_bShouldUpdateEnemies, FIELD_BOOLEAN),
 
 DEFINE_INPUTFUNC(FIELD_VOID, "Enable", InputEnable),
 DEFINE_INPUTFUNC(FIELD_VOID, "Disable", InputDisable),
@@ -50,34 +72,24 @@ static string_t SPAWN_TYPE_NEAREST = AllocPooledString("nearest");
 
 CLogicAssault::CLogicAssault()
 {
-	m_iszVScripts = AllocPooledString("assault_wave_manager");
-}
-
-void CLogicAssault::Spawn(void)
-{
-	// Idk, guess this spawns twice or smth
-	/*
-	CBaseEntity* pAssaultLogic = gEntList.FindEntityByClassname(NULL, "logic_assault");
-	if (pAssaultLogic)
-	{
-		Warning("Another logic_assault entity found, there can only be one entity.\n");
-		UTIL_Remove(this);
-		return;
-	}
-	*/
 	m_iNumWave = 1;
 	m_iPhase = 0;
-	m_bDisabled = true;
 	KeyValues* assaultdata = new KeyValues("AssaultWaveData");
 	if (GetAssaultSettingsKeyValues(assaultdata))
 	{
-		m_bEndlessWaves = assaultdata->GetBool("EndlessWaves", true);
-		m_iMaxEnemies = assaultdata->GetInt("MaxEnemies", 8);
 		m_iMinEnemiesToKillToProgress = assaultdata->GetInt("MinEnemiesToKillToProgress", 8);
-		m_iMaxWaves = assaultdata->GetInt("MaxWaves", 5);
 		m_iMinEnemiesToEndWave = assaultdata->GetInt("MinEnemiesToEndWave", 1);
-		m_EnemyType = AllocPooledString(assaultdata->GetString("EnemyType", "combine"));
-		m_EnemyModel = AllocPooledString(assaultdata->GetString("EnemyModel", "models/combine_soldier.mdl"));
+		if (!m_bUseOverrides)
+		{
+			m_EnemyType = AllocPooledString(assaultdata->GetString("EnemyType", "combine"));
+			m_EnemyModel = AllocPooledString(assaultdata->GetString("EnemyModel", "models/combine_soldier.mdl"));
+			m_SpawnType = AllocPooledString(assaultdata->GetString("SpawnType", "random"));
+			m_fSpawnDistance = assaultdata->GetFloat("SpawnDistance", 400.0F);
+			m_bShouldUpdateEnemies = assaultdata->GetBool("ShouldUpdateEnemies", true);
+			m_bEndlessWaves = assaultdata->GetBool("EndlessWaves", true);
+			m_iMaxEnemies = assaultdata->GetInt("MaxEnemies", 8);
+			m_iMaxWaves = assaultdata->GetInt("MaxWaves", 5);
+		}
 		m_fShotgunChance = assaultdata->GetFloat("ShotgunChance", 0.25F);
 		m_fAR2Chance = assaultdata->GetFloat("AR2Chance", 0.15F);
 		m_fGrenadeChance = assaultdata->GetFloat("GrenadeChance", 0.25F);
@@ -85,34 +97,16 @@ void CLogicAssault::Spawn(void)
 		m_iTacticalVariant = assaultdata->GetInt("TacticalVariant", 2);
 		m_flSpawnFrequency = assaultdata->GetFloat("SpawnFrequency", 0.1F);
 		m_flTimeUntilNextWave = assaultdata->GetFloat("TimeUntilNextWave", 1.0F);
-		m_SpawnType = AllocPooledString(assaultdata->GetString("SpawnType", "random"));
-		m_fSpawnDistance = assaultdata->GetFloat("SpawnDistance", 400.0F);
-		m_bShouldUpdateEnemies = assaultdata->GetBool("ShouldUpdateEnemies", true);
 
 		assaultdata->deleteThis();
 	}
-	else
-	{
-		Warning("logic_assault failed to set assault properties. Is the scripts intact?\n");
-		m_bEndlessWaves = true;
-		m_iMaxEnemies = 8;
-		m_iMinEnemiesToKillToProgress = 8;
-		m_iMaxWaves = 5;
-		m_iMinEnemiesToEndWave = 1;
-		m_EnemyType = AllocPooledString("combine");
-		m_EnemyModel = AllocPooledString("models/combine_soldier.mdl");
-		m_fShotgunChance = 0.25F;
-		m_fAR2Chance = 0.15F;
-		m_fGrenadeChance = 0.25F;
-		m_fEnemyCitizenMedicChance = 0.15F;
-		m_iTacticalVariant = 2;
-		m_flSpawnFrequency = 0.1F;
-		m_flTimeUntilNextWave = 1.0F;
-		m_SpawnType = AllocPooledString("random");
-		m_fSpawnDistance = 400.0F;
-		m_bShouldUpdateEnemies = true;
-	}
 	m_iMinEnemiesToKillToProgressCounter = m_iMinEnemiesToKillToProgress;
+
+	m_iszVScripts = AllocPooledString("assault_globals");
+}
+
+void CLogicAssault::Spawn(void)
+{
 	if (m_bDisabled)
 	{
 		//wait to be activated.
@@ -138,7 +132,7 @@ void CLogicAssault::AssaultThink(void)
 		MakeNPC();
 	}
 
-	if (m_iMinEnemiesToKillToProgressCounter <= m_iMinEnemiesToEndWave)
+	if (m_iMinEnemiesToKillToProgressCounter < m_iMinEnemiesToEndWave)
 	{
 		// If we beat all three phases, go to the next wave
 		if (m_iPhase > 3)
@@ -174,7 +168,7 @@ void CLogicAssault::AssaultThink(void)
 // A not-very-robust check to see if a human hull could fit at this location.
 // used to validate spawn destinations.
 //-----------------------------------------------------------------------------
-bool CLogicAssault::HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity)
+bool CLogicAssault::HumanHullFits(const Vector& vecLocation)
 {
 	trace_t tr;
 	UTIL_TraceHull(vecLocation,
@@ -182,7 +176,7 @@ bool CLogicAssault::HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnor
 		NAI_Hull::Mins(HULL_HUMAN),
 		NAI_Hull::Maxs(HULL_HUMAN),
 		MASK_NPCSOLID,
-		pIgnoreEntity,
+		NULL,
 		COLLISION_GROUP_NONE,
 		&tr);
 
@@ -232,11 +226,11 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CNPCSpawnDestination* 
 						NAI_Hull::Mins(HULL_HUMAN),
 						NAI_Hull::Maxs(HULL_HUMAN),
 						MASK_NPCSOLID,
-						pSpawnPoint,
+						NULL,
 						COLLISION_GROUP_NONE,
 						&tr);
 
-					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1), pSpawnPoint))
+					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1)))
 					{
 						return false;
 					}
@@ -334,7 +328,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 		{
 			CNPCSpawnDestination* pRandomDest = pDestinations[rand() % count];
 
-			if (HumanHullFits(pRandomDest->GetAbsOrigin(), NULL))
+			if (HumanHullFits(pRandomDest->GetAbsOrigin()))
 			{
 				return pRandomDest;
 			}
@@ -357,7 +351,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 				if (m_fSpawnDistance != 0 && m_fSpawnDistance > flDist)
 					continue;
 
-				if (flDist < flNearest && HumanHullFits(vecTest, NULL))
+				if (flDist < flNearest && HumanHullFits(vecTest))
 				{
 					flNearest = flDist;
 					pNearest = pDestinations[i];
@@ -379,7 +373,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 				if (m_fSpawnDistance != 0 && m_fSpawnDistance > flDist)
 					continue;
 
-				if (flDist > flFarthest && HumanHullFits(vecTest, NULL))
+				if (flDist > flFarthest && HumanHullFits(vecTest))
 				{
 					flFarthest = flDist;
 					pFarthest = pDestinations[i];
