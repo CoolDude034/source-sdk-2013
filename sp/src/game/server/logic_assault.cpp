@@ -127,7 +127,7 @@ void CLogicAssault::Precache(void)
 void CLogicAssault::AssaultThink(void)
 {
 	if (m_bDisabled) return;
-	if (m_iNumEnemies < m_iMaxEnemies && m_iNumWave <= m_iMaxWaves)
+	if (m_iNumEnemies < m_iMaxEnemies && m_iNumWave <= m_iMaxWaves && !m_bEndlessWaves)
 	{
 		MakeNPC();
 	}
@@ -168,7 +168,7 @@ void CLogicAssault::AssaultThink(void)
 // A not-very-robust check to see if a human hull could fit at this location.
 // used to validate spawn destinations.
 //-----------------------------------------------------------------------------
-bool CLogicAssault::HumanHullFits(const Vector& vecLocation)
+bool CLogicAssault::HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity)
 {
 	trace_t tr;
 	UTIL_TraceHull(vecLocation,
@@ -176,7 +176,7 @@ bool CLogicAssault::HumanHullFits(const Vector& vecLocation)
 		NAI_Hull::Mins(HULL_HUMAN),
 		NAI_Hull::Maxs(HULL_HUMAN),
 		MASK_NPCSOLID,
-		NULL,
+		pIgnoreEntity,
 		COLLISION_GROUP_NONE,
 		&tr);
 
@@ -230,7 +230,7 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, CNPCSpawnDestination* 
 						COLLISION_GROUP_NONE,
 						&tr);
 
-					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1)))
+					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1), pList[i]))
 					{
 						return false;
 					}
@@ -328,7 +328,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 		{
 			CNPCSpawnDestination* pRandomDest = pDestinations[rand() % count];
 
-			if (HumanHullFits(pRandomDest->GetAbsOrigin()))
+			if (HumanHullFits(pRandomDest->GetAbsOrigin(), pRandomDest))
 			{
 				return pRandomDest;
 			}
@@ -351,7 +351,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 				if (m_fSpawnDistance != 0 && m_fSpawnDistance > flDist)
 					continue;
 
-				if (flDist < flNearest && HumanHullFits(vecTest))
+				if (flDist < flNearest && HumanHullFits(vecTest, pNearest))
 				{
 					flNearest = flDist;
 					pNearest = pDestinations[i];
@@ -373,7 +373,7 @@ CNPCSpawnDestination* CLogicAssault::FindSpawnDestination()
 				if (m_fSpawnDistance != 0 && m_fSpawnDistance > flDist)
 					continue;
 
-				if (flDist > flFarthest && HumanHullFits(vecTest))
+				if (flDist > flFarthest && HumanHullFits(vecTest, pFarthest))
 				{
 					flFarthest = flDist;
 					pFarthest = pDestinations[i];
