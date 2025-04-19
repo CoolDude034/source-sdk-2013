@@ -1872,19 +1872,6 @@ int CNPC_Citizen::TranslateSchedule( int scheduleType )
 				return SCHED_RANGE_ATTACK1;
 			}
 		}
-
-		if (m_Type == CT_REBEL_HOSTILE)
-		{
-			if (GetEnemy() != NULL && GetEnemy()->IsPlayer())
-			{
-				// Charge the player if they are far away within 35.0 radius
-				float distSqEnemy = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
-				if (distSqEnemy > 35.0 * 35.0 &&
-					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() > distSqEnemy)
-					return SCHED_TAKE_COVER_FROM_ENEMY;
-				return SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE;
-			}
-		}
 		break;
 	}
 
