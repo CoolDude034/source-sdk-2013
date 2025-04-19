@@ -636,7 +636,7 @@ void CNPC_Citizen::Spawn()
 	if (NameMatches("npc_combine_cit_*") || m_Type == CT_COMBINE)
 	{
 		AddEFlags(EFL_NO_DISSOLVE);
-		if (!HasContext("is_combine_security 1"))
+		if (!HasContext("is_combine_security:1"))
 		{
 			AddContext("is_combine_security", "1"); // Give security unique responses
 		}
@@ -1877,10 +1877,10 @@ int CNPC_Citizen::TranslateSchedule( int scheduleType )
 		{
 			if (GetEnemy() != NULL && GetEnemy()->IsPlayer())
 			{
-				// Charge the player if they are far away within 25.0 radius
+				// Charge the player if they are far away within 35.0 radius
 				float distSqEnemy = (GetEnemy()->GetAbsOrigin() - EyePosition()).LengthSqr();
-				if (distSqEnemy < 25.0 * 25.0 &&
-					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() < distSqEnemy)
+				if (distSqEnemy > 35.0 * 35.0 &&
+					((GetEnemy()->GetAbsOrigin()) - EyePosition()).LengthSqr() > distSqEnemy)
 					return SCHED_TAKE_COVER_FROM_ENEMY;
 				return SCHED_CITIZEN_RANGE_ATTACK1_ADVANCE;
 			}
