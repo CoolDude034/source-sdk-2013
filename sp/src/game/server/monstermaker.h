@@ -95,6 +95,7 @@ public:
 	int		m_nMaxLiveChildren;	// max number of NPCs that this maker may have out at one time.
 
 	bool	m_bDisabled;
+	bool	m_bIsDynamicSpawn;			// Determines if level-designer has control over the npc_maker or the MOD
 
 	EHANDLE m_hIgnoreEntity;
 	string_t m_iszIngoreEnt;
@@ -120,6 +121,8 @@ public:
 	string_t m_spawnEquipment;
 	string_t m_RelationshipString;		// Used to load up relationship keyvalues
 	string_t m_ChildTargetName;
+	string_t m_ChildModelName;			// If set, the soldier will use a custom model instead of the default one.
+	bool	m_bWaitingOnRappel;			// If true, the soldier will rappel down from the spawner. The spawner should be placed up
 };
 
 class CTemplateNPCMaker : public CBaseNPCMaker
