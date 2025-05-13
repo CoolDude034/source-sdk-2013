@@ -22,6 +22,8 @@
 
 #define SF_SUIT_SHORTLOGON		0x0001
 
+ConVar sk_item_suit_short_logon_override("sv_item_suit_short_logon_override", "0");
+
 class CItemSuit : public CItem
 {
 public:
@@ -44,7 +46,7 @@ public:
 		if ( pPlayer->IsSuitEquipped() )
 			return FALSE;
 
-		if ( m_spawnflags & SF_SUIT_SHORTLOGON )
+		if ( m_spawnflags & SF_SUIT_SHORTLOGON || sk_item_suit_short_logon_override.GetBool() )
 			UTIL_EmitSoundSuit(pPlayer->edict(), "!HEV_A0");		// short version of suit logon,
 		else
 			UTIL_EmitSoundSuit(pPlayer->edict(), "!HEV_AAx");	// long version of suit logon
