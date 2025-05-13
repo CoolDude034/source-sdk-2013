@@ -38,6 +38,8 @@
 ConVar sk_weapon_ar2_alt_fire_radius( "sk_weapon_ar2_alt_fire_radius", "10" );
 ConVar sk_weapon_ar2_alt_fire_duration( "sk_weapon_ar2_alt_fire_duration", "2" );
 ConVar sk_weapon_ar2_alt_fire_mass( "sk_weapon_ar2_alt_fire_mass", "150" );
+ConVar sk_weapon_ar2_alt_fire_enabled("sk_weapon_ar2_alt_fire_enabled", "1");
+ConVar sk_weapon_ar2_genshin_impact_effect("sk_weapon_ar2_genshin_impact_effect", "AR2Impact");
 
 extern ConVar sv_enable_hitscan_weapons;
 extern ConVar sk_bullet_speed;
@@ -292,7 +294,7 @@ void CWeaponAR2::DoImpactEffect( trace_t &tr, int nDamageType )
 	data.m_vOrigin = tr.endpos + ( tr.plane.normal * 1.0f );
 	data.m_vNormal = tr.plane.normal;
 
-	DispatchEffect( "AR2Impact", data );
+	DispatchEffect( sk_weapon_ar2_genshin_impact_effect.GetString() , data);
 
 	BaseClass::DoImpactEffect( tr, nDamageType );
 }
@@ -302,6 +304,9 @@ void CWeaponAR2::DoImpactEffect( trace_t &tr, int nDamageType )
 //-----------------------------------------------------------------------------
 void CWeaponAR2::DelayedAttack( void )
 {
+	if (!sk_weapon_ar2_alt_fire_enabled.GetBool())
+		return;
+
 	m_bShotDelayed = false;
 	
 	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
@@ -367,6 +372,9 @@ void CWeaponAR2::DelayedAttack( void )
 //-----------------------------------------------------------------------------
 void CWeaponAR2::SecondaryAttack( void )
 {
+	if (!sk_weapon_ar2_alt_fire_enabled.GetBool())
+		return;
+
 	if ( m_bShotDelayed )
 		return;
 
@@ -569,7 +577,7 @@ void CWeaponAR2::FireNPCSecondaryAttack( CBaseCombatCharacter *pOperator, bool b
 //-----------------------------------------------------------------------------
 void CWeaponAR2::Operator_ForceNPCFire( CBaseCombatCharacter *pOperator, bool bSecondary )
 {
-	if ( bSecondary )
+	if ( bSecondary && sk_weapon_ar2_alt_fire_enabled.GetBool() )
 	{
 		FireNPCSecondaryAttack( pOperator, true );
 	}
