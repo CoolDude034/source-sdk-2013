@@ -86,6 +86,7 @@ BEGIN_DATADESC( CBaseNPCMaker )
 	DEFINE_KEYFIELD( m_bDisabled,			FIELD_BOOLEAN,	"StartDisabled" ),
 
 	DEFINE_FIELD(	m_nLiveChildren,		FIELD_INTEGER ),
+	DEFINE_FIELD(	m_bIsDynamicSpawn,		FIELD_BOOLEAN),
 
 	// Inputs
 	DEFINE_INPUTFUNC( FIELD_VOID,	"Spawn",	InputSpawnNPC ),
@@ -225,7 +226,7 @@ bool CBaseNPCMaker::CanMakeNPC( bool bIgnoreSolidEntities )
 	}
 
 	// Do we need to check to see if the player's looking?
-	if ( HasSpawnFlags( SF_NPCMAKER_HIDEFROMPLAYER ) )
+	if ( HasSpawnFlags( SF_NPCMAKER_HIDEFROMPLAYER ) || m_bIsDynamicSpawn )
 	{
 		for ( int i = 1; i <= gpGlobals->maxClients; i++ )
 		{
@@ -370,14 +371,16 @@ void CBaseNPCMaker::InputSetSpawnFrequency( inputdata_t &inputdata )
 
 LINK_ENTITY_TO_CLASS( npc_maker, CNPCMaker );
 
-BEGIN_DATADESC( CNPCMaker )
+BEGIN_DATADESC(CNPCMaker)
 
-	DEFINE_KEYFIELD( m_iszNPCClassname,		FIELD_STRING,	"NPCType" ),
-	DEFINE_KEYFIELD( m_ChildTargetName,		FIELD_STRING,	"NPCTargetname" ),
-	DEFINE_KEYFIELD( m_SquadName,			FIELD_STRING,	"NPCSquadName" ),
-	DEFINE_KEYFIELD( m_spawnEquipment,		FIELD_STRING,	"additionalequipment" ),
-	DEFINE_KEYFIELD( m_strHintGroup,			FIELD_STRING,	"NPCHintGroup" ),
-	DEFINE_KEYFIELD( m_RelationshipString,	FIELD_STRING,	"Relationship" ),
+DEFINE_KEYFIELD(m_iszNPCClassname, FIELD_STRING, "NPCType"),
+DEFINE_KEYFIELD(m_ChildTargetName, FIELD_STRING, "NPCTargetname"),
+DEFINE_KEYFIELD(m_SquadName, FIELD_STRING, "NPCSquadName"),
+DEFINE_KEYFIELD(m_spawnEquipment, FIELD_STRING, "additionalequipment"),
+DEFINE_KEYFIELD(m_strHintGroup, FIELD_STRING, "NPCHintGroup"),
+DEFINE_KEYFIELD(m_RelationshipString, FIELD_STRING, "Relationship"),
+DEFINE_KEYFIELD(m_ChildModelName, FIELD_MODELNAME, "ModelOverride"),
+DEFINE_KEYFIELD(m_bWaitingOnRappel, FIELD_BOOLEAN, "WaitingForRappel"),
 
 END_DATADESC()
 
@@ -385,9 +388,43 @@ END_DATADESC()
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------
+
+ConVar dyn_spawner_weapon_slot1("dyn_spawner_weapon_slot1", "weapon_smg1", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot2("dyn_spawner_weapon_slot2", "weapon_mp5", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot3("dyn_spawner_weapon_slot3", "weapon_shotgun", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot4("dyn_spawner_weapon_slot4", "weapon_ar2", FCVAR_HIDDEN);
+
+ConVar dyn_spawner_weapon_slot1_chance("dyn_spawner_weapon_slot1_chance", "0.35", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot2_chance("dyn_spawner_weapon_slot2_chance", "0.35", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot3_chance("dyn_spawner_weapon_slot3_chance", "0.25", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot4_chance("dyn_spawner_weapon_slot4_chance", "0.02", FCVAR_HIDDEN);
+
 CNPCMaker::CNPCMaker( void )
 {
 	m_spawnEquipment = NULL_STRING;
+
+	if (m_bIsDynamicSpawn)
+	{
+		if (random->RandomFloat() < dyn_spawner_weapon_slot1_chance.GetFloat())
+		{
+			m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot1.GetString());
+		}
+		if (random->RandomFloat() < dyn_spawner_weapon_slot2_chance.GetFloat())
+		{
+			m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot2.GetString());
+		}
+		if (random->RandomFloat() < dyn_spawner_weapon_slot3_chance.GetFloat())
+		{
+			m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot3.GetString());
+		}
+		if (random->RandomFloat() < dyn_spawner_weapon_slot4_chance.GetFloat())
+		{
+			m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot4.GetString());
+		}
+
+		m_iszNPCClassname = MAKE_STRING("npc_combine_s");
+		m_SquadName = MAKE_STRING("squad_reinforcements");
+	}
 }
 
 
@@ -413,6 +450,10 @@ void CNPCMaker::Precache( void )
 //-----------------------------------------------------------------------------
 // Purpose: Creates the NPC.
 //-----------------------------------------------------------------------------
+
+ConVar dyn_spawner_soldier_model("dyn_spawner_soldier_model", "models/combine_soldier.mdl", FCVAR_HIDDEN);
+ConVar dyn_spawner_grenade_amount("dyn_spawner_grenade_amount", "5", FCVAR_HIDDEN);
+
 void CNPCMaker::MakeNPC( void )
 {
 	if (!CanMakeNPC())
@@ -443,7 +484,7 @@ void CNPCMaker::MakeNPC( void )
 
 	pent->AddSpawnFlags( SF_NPC_FALL_TO_GROUND );
 
-	if ( m_spawnflags & SF_NPCMAKER_FADE )
+	if ( m_spawnflags & SF_NPCMAKER_FADE || m_bIsDynamicSpawn )
 	{
 		pent->AddSpawnFlags( SF_NPC_FADE_CORPSE );
 	}
@@ -451,6 +492,24 @@ void CNPCMaker::MakeNPC( void )
 	pent->m_spawnEquipment	= m_spawnEquipment;
 	pent->SetSquadName( m_SquadName );
 	pent->SetHintGroup( m_strHintGroup );
+
+	if (m_bIsDynamicSpawn)
+	{
+		pent->SetModelName(MAKE_STRING(dyn_spawner_soldier_model.GetString()));
+		pent->KeyValue("NumGrenades", dyn_spawner_grenade_amount.GetString());
+		pent->KeyValue("tacticalvariant", "2");
+		if (m_bWaitingOnRappel)
+		{
+			pent->KeyValue("waitingtorappel", "1");
+		}
+	}
+	else
+	{
+		if (m_ChildModelName != NULL_STRING)
+		{
+			pent->SetModelName(m_ChildModelName);
+		}
+	}
 
 	ChildPreSpawn( pent );
 
@@ -468,7 +527,7 @@ void CNPCMaker::MakeNPC( void )
 
 	m_nLiveChildren++;// count this NPC
 
-	if (!(m_spawnflags & SF_NPCMAKER_INF_CHILD))
+	if (!(m_spawnflags & SF_NPCMAKER_INF_CHILD) && !m_bIsDynamicSpawn)
 	{
 		m_nMaxNumNPCs--;
 
@@ -479,6 +538,20 @@ void CNPCMaker::MakeNPC( void )
 			// Disable this forever.  Don't kill it because it still gets death notices
 			SetThink( NULL );
 			SetUse( NULL );
+		}
+	}
+
+	if (m_bIsDynamicSpawn)
+	{
+		CBasePlayer* pPlayer = UTIL_GetLocalPlayerOrListenServerHost();
+		if (pPlayer)
+		{
+			pent->UpdateEnemyMemory(NULL, pPlayer->GetAbsOrigin());
+		}
+
+		if (m_bWaitingOnRappel)
+		{
+			pent->BeginRappel();
 		}
 	}
 }
