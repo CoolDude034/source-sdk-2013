@@ -74,29 +74,49 @@ static const char *s_pChunkModelName[CHOPPER_MAX_CHUNKS] =
 #define	HELICOPTER_CHUNK_TAIL		"models/gibs/helicopter_brokenpiece_05_tailfan.mdl"
 #define	HELICOPTER_CHUNK_BODY		"models/gibs/helicopter_brokenpiece_06_body.mdl"
 
+ConVar npc_helicopter_max_speed("npc_helicopter_max_speed", "17.6", FCVAR_HIDDEN);
+ConVar npc_helicopter_max_firing_speed("npc_helicopter_max_firing_speed", "250.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_max_gun_dist("npc_helicopter_max_gun_dist", "2000.0", FCVAR_HIDDEN);
 
-#define CHOPPER_MAX_SPEED			(60 * 17.6f)
-#define CHOPPER_MAX_FIRING_SPEED	250.0f
-#define CHOPPER_MAX_GUN_DIST		2000.0f
+ConVar npc_helicopter_accel_rate("npc_helicopter_accel_rate", "500", FCVAR_HIDDEN);
+ConVar npc_helicopter_accel_rate_boost("npc_helicopter_accel_rate_boost", "1500", FCVAR_HIDDEN);
 
-#define CHOPPER_ACCEL_RATE			500
-#define CHOPPER_ACCEL_RATE_BOOST	1500
+ConVar npc_helicopter_default_free_knowledge_duration("npc_helicopter_default_free_knowledge_duration", "5.0", FCVAR_HIDDEN);
 
-#define DEFAULT_FREE_KNOWLEDGE_DURATION 5.0f
+ConVar npc_helicopter_lead_distance("npc_helicopter_lead_distance", "800.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_min_chase_dist_diff("npc_helicopter_min_chase_dist_diff", "128.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_min_aggressive_chase_dist_diff("npc_helicopter_min_aggressive_chase_dist_diff", "64.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_avoid_dist("npc_helicopter_avoid_dist", "512.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_arrive_dist("npc_helicopter_arrive_dist", "128.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_max_circle_of_death_follow_speed("npc_helicopter_max_circle_of_death_follow_speed", "450.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_min_circle_of_death_radius("npc_helicopter_min_circle_of_death_radius", "150.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_max_circle_of_death_radius("npc_helicopter_max_circle_of_death_radius", "350.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_bomb_drop_count("npc_helicopter_bomb_drop_count", "6", FCVAR_HIDDEN);
+ConVar npc_helicopter_idle_player_fire_time("npc_helicopter_idle_player_fire_time", "6.0", FCVAR_HIDDEN);
+
+
+#define CHOPPER_MAX_SPEED			(60 * npc_helicopter_max_speed.GetFloat())
+#define CHOPPER_MAX_FIRING_SPEED	npc_helicopter_firing_speed.GetFloat()
+#define CHOPPER_MAX_GUN_DIST		npc_helicopter_max_gun_dist.GetFloat()
+
+#define CHOPPER_ACCEL_RATE			npc_helicopter_accel_rate.GetInt()
+#define CHOPPER_ACCEL_RATE_BOOST	npc_helicopter_accel_rate_boost.GetInt()
+
+#define DEFAULT_FREE_KNOWLEDGE_DURATION npc_helicopter_default_free_knowledge_duration.GetFloat()
 
 // -------------------------------------
 // Pathing data
-#define	CHOPPER_LEAD_DISTANCE			800.0f
-#define	CHOPPER_MIN_CHASE_DIST_DIFF		128.0f	// Distance threshold used to determine when a target has moved enough to update our navigation to it
-#define CHOPPER_MIN_AGGRESSIVE_CHASE_DIST_DIFF 64.0f
-#define	CHOPPER_AVOID_DIST				512.0f
-#define	CHOPPER_ARRIVE_DIST				128.0f
+#define	CHOPPER_LEAD_DISTANCE			npc_helicopter_lead_distance.GetFloat()
+#define	CHOPPER_MIN_CHASE_DIST_DIFF		npc_helicopter_min_chase_dist_diff.GetFloat()	// Distance threshold used to determine when a target has moved enough to update our navigation to it
+#define CHOPPER_MIN_AGGRESSIVE_CHASE_DIST_DIFF npc_helicopter_min_aggressive_chase_dist_diff.GetFloat()
+#define	CHOPPER_AVOID_DIST				npc_helicopter_avoid_dist.GetFloat()
+#define	CHOPPER_ARRIVE_DIST				npc_helicopter_arrive_dist.GetFloat()
 
-#define CHOPPER_MAX_CIRCLE_OF_DEATH_FOLLOW_SPEED	450.0f
-#define CHOPPER_MIN_CIRCLE_OF_DEATH_RADIUS	150.0f
-#define CHOPPER_MAX_CIRCLE_OF_DEATH_RADIUS	350.0f
+#define CHOPPER_MAX_CIRCLE_OF_DEATH_FOLLOW_SPEED	npc_helicopter_max_circle_of_death_follow_speed.GetFloat()
+#define CHOPPER_MIN_CIRCLE_OF_DEATH_RADIUS	npc_helicopter_min_circle_of_death_radius.GetFloat()
+#define CHOPPER_MAX_CIRCLE_OF_DEATH_RADIUS	npc_helicopter_max_circle_of_death_radius.GetFloat()
 
-#define CHOPPER_BOMB_DROP_COUNT 6
+#define CHOPPER_BOMB_DROP_COUNT npc_helicopter_bomb_drop_count.GetInt()
 
 // Bullrush
 #define CHOPPER_BULLRUSH_MODE_DISTANCE g_helicopter_bullrush_distance.GetFloat()
@@ -109,7 +129,7 @@ static const char *s_pChunkModelName[CHOPPER_MAX_CHUNKS] =
 #define CHOPPER_GUN_IDLE_TIME		g_helicopter_idletime.GetFloat()
 #define CHOPPER_GUN_MAX_FIRING_DIST	g_helicopter_maxfiringdist.GetFloat()
 
-#define BULLRUSH_IDLE_PLAYER_FIRE_TIME 6.0f
+#define BULLRUSH_IDLE_PLAYER_FIRE_TIME npc_helicopter_idle_player_fire_time.GetFloat()
 
 #define DRONE_SPEED	sk_helicopter_drone_speed.GetFloat()
 
@@ -173,8 +193,11 @@ static const char *s_pRampSoundContext = "RampSound";
 static const char *s_pWarningBlinkerContext = "WarningBlinker";
 static const char *s_pAnimateThinkContext = "Animate";
 
-#define CHOPPER_LIGHT_BLINK_TIME		1.0f
-#define CHOPPER_LIGHT_BLINK_TIME_SHORT	0.1f
+ConVar npc_helicopter_light_blink_time("npc_helicopter_light_blink_time", "1.0", FCVAR_HIDDEN);
+ConVar npc_helicopter_light_blink_time_short("npc_helicopter_light_blink_time_short", "0.1", FCVAR_HIDDEN);
+
+#define CHOPPER_LIGHT_BLINK_TIME		npc_helicopter_light_blink_time.GetFloat()
+#define CHOPPER_LIGHT_BLINK_TIME_SHORT	npc_helicopter_light_blink_time_short.GetFloat()
 
 #define BOMB_LIFETIME	2.5f	// Don't access this directly. Call GetBombLifetime();
 #define BOMB_RAMP_SOUND_TIME 1.0f
