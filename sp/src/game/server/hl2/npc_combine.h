@@ -79,7 +79,7 @@ public:
 	virtual bool	IsCrouchedActivity( Activity activity );
 #endif
 
-	// WORLDTWEAKS
+	// If true, will spawn with a ballistic shield
 	bool		m_bIsShield;
 
 	void Event_Killed( const CTakeDamageInfo &info );
