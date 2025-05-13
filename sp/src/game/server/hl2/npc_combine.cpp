@@ -1,6 +1,6 @@
 //========= Copyright Valve Corporation, All rights reserved. ============//
 //
-// Purpose: 
+// Purpose: The AI of the Combine Soldier
 //
 //=============================================================================//
 
@@ -69,6 +69,38 @@ ConVar npc_combine_charger_chase_distance("npc_combine_charger_chase_distance", 
 ConVar npc_combine_charger_pressure_distance("npc_combine_charger_pressure_distance", "30.0", FCVAR_HIDDEN);
 #endif
 
+ConVar npc_combine_eye_standing_position_posX("npc_combine_eye_standing_position_posX", "0", FCVAR_HIDDEN);
+ConVar npc_combine_eye_standing_position_posY("npc_combine_eye_standing_position_posY", "0", FCVAR_HIDDEN);
+ConVar npc_combine_eye_standing_position_posZ("npc_combine_eye_standing_position_posZ", "66", FCVAR_HIDDEN);
+
+ConVar npc_combine_gun_standing_position_posX("npc_combine_gun_standing_position_posX", "0", FCVAR_HIDDEN);
+ConVar npc_combine_gun_standing_position_posY("npc_combine_gun_standing_position_posY", "0", FCVAR_HIDDEN);
+ConVar npc_combine_gun_standing_position_posZ("npc_combine_gun_standing_position_posZ", "57", FCVAR_HIDDEN);
+
+ConVar npc_combine_eye_crouching_position_posX("npc_combine_eye_crouching_position_posX", "0", FCVAR_HIDDEN);
+ConVar npc_combine_eye_crouching_position_posY("npc_combine_eye_crouching_position_posY", "0", FCVAR_HIDDEN);
+ConVar npc_combine_eye_crouching_position_posZ("npc_combine_eye_crouching_position_posZ", "40", FCVAR_HIDDEN);
+
+ConVar npc_combine_gun_crouching_position_posX("npc_combine_gun_crouching_position_posX", "0", FCVAR_HIDDEN);
+ConVar npc_combine_gun_crouching_position_posY("npc_combine_gun_crouching_position_posY", "0", FCVAR_HIDDEN);
+ConVar npc_combine_gun_crouching_position_posZ("npc_combine_gun_crouching_position_posZ", "36", FCVAR_HIDDEN);
+
+ConVar npc_combine_shotgun_standing_position_posX("npc_combine_shotgun_standing_position_posX", "0", FCVAR_HIDDEN);
+ConVar npc_combine_shotgun_standing_position_posY("npc_combine_shotgun_standing_position_posY", "0", FCVAR_HIDDEN);
+ConVar npc_combine_shotgun_standing_position_posZ("npc_combine_shotgun_standing_position_posZ", "36", FCVAR_HIDDEN);
+
+ConVar npc_combine_shotgun_crouching_position_posX("npc_combine_shotgun_crouching_position_posX", "0", FCVAR_HIDDEN);
+ConVar npc_combine_shotgun_crouching_position_posY("npc_combine_shotgun_crouching_position_posY", "0", FCVAR_HIDDEN);
+ConVar npc_combine_shotgun_crouching_position_posZ("npc_combine_shotgun_crouching_position_posZ", "36", FCVAR_HIDDEN);
+
+ConVar npc_combine_hacked_gunpos_position_posX("npc_combine_hacked_gunpos_position_posX", "0", FCVAR_HIDDEN);
+ConVar npc_combine_hacked_gunpos_position_posY("npc_combine_hacked_gunpos_position_posY", "0", FCVAR_HIDDEN);
+ConVar npc_combine_hacked_gunpos_position_posZ("npc_combine_hacked_gunpos_position_posZ", "55", FCVAR_HIDDEN);
+
+ConVar npc_combine_tactical_variant_override("npc_combine_tactical_variant_override", "-1", FCVAR_HIDDEN);
+
+ConVar npc_combine_move_and_shoot_delay("npc_combine_move_and_shoot_delay", "0.75", FCVAR_HIDDEN);
+
 extern ConVar sk_npc_shotgun_chance;
 extern ConVar sk_npc_pistol_chance;
 extern ConVar sk_npc_smg_chance;
@@ -89,12 +121,12 @@ extern ConVar sk_npc_smg_chance;
 #define	COMBINE_MIN_GRENADE_CLEAR_DIST	npc_combine_grenade_min_clear_dist.GetInt()
 #endif
 
-#define COMBINE_EYE_STANDING_POSITION	Vector( 0, 0, 66 )
-#define COMBINE_GUN_STANDING_POSITION	Vector( 0, 0, 57 )
-#define COMBINE_EYE_CROUCHING_POSITION	Vector( 0, 0, 40 )
-#define COMBINE_GUN_CROUCHING_POSITION	Vector( 0, 0, 36 )
-#define COMBINE_SHOTGUN_STANDING_POSITION	Vector( 0, 0, 36 )
-#define COMBINE_SHOTGUN_CROUCHING_POSITION	Vector( 0, 0, 36 )
+#define COMBINE_EYE_STANDING_POSITION	Vector( npc_combine_eye_standing_position_posX.GetInt(), npc_combine_eye_standing_position_posY.GetInt(), npc_combine_eye_standing_position_posZ.GetInt() )
+#define COMBINE_GUN_STANDING_POSITION	Vector( npc_combine_gun_standing_position_posX.GetInt(), npc_combine_gun_standing_position_posY.GetInt(), npc_combine_gun_standing_position_posZ.GetInt() )
+#define COMBINE_EYE_CROUCHING_POSITION	Vector( npc_combine_eye_crouching_position_posX.GetInt(), npc_combine_eye_crouching_position_posY.GetInt(), npc_combine_eye_crouching_position_posZ.GetInt() )
+#define COMBINE_GUN_CROUCHING_POSITION	Vector( npc_combine_gun_crouching_position_posX.GetInt(), npc_combine_gun_crouching_position_posY.GetInt(), npc_combine_gun_crouching_position_posZ.GetInt() )
+#define COMBINE_SHOTGUN_STANDING_POSITION	Vector( npc_combine_shotgun_standing_position_posX.GetInt(), npc_combine_shotgun_standing_position_posY.GetInt(), npc_combine_shotgun_standing_position_posZ.GetInt() )
+#define COMBINE_SHOTGUN_CROUCHING_POSITION	Vector( npc_combine_shotgun_crouching_position_posX.GetInt(), npc_combine_shotgun_crouching_position_posY.GetInt(), npc_combine_shotgun_crouching_position_posZ.GetInt() )
 #define COMBINE_MIN_CROUCH_DISTANCE		npc_combine_min_crouch_dist.GetFloat()
 
 //-----------------------------------------------------------------------------
@@ -279,6 +311,11 @@ END_DATADESC()
 CNPC_Combine::CNPC_Combine()
 {
 	m_vecTossVelocity = vec3_origin;
+
+	if (npc_combine_tactical_variant_override.GetInt() != -1)
+	{
+		m_iTacticalVariant = npc_combine_tactical_variant_override.GetInt();
+	}
 }
 
 
@@ -399,6 +436,9 @@ void CNPC_Combine::InputDropGrenade( inputdata_t &inputdata )
 //-----------------------------------------------------------------------------
 void CNPC_Combine::InputSetTacticalVariant( inputdata_t &inputdata )
 {
+	if (npc_combine_tactical_variant_override.GetInt() != -1)
+		// MOD overrides this, do nothing.
+		return;
 	m_iTacticalVariant = inputdata.value.Int();
 }
 
@@ -510,6 +550,7 @@ void CNPC_Combine::Spawn( void )
 		CapabilitiesAdd(bits_CAP_MOVE_CLIMB);
 	}
 
+	// me trying to add stupid shit be like
 	if (IsElite())
 	{
 		if (npc_combine_elites_always_spawn_with_ar2.GetBool())
@@ -564,10 +605,10 @@ void CNPC_Combine::Spawn( void )
 
 	m_bFirstEncounter	= true;// this is true when the grunt spawns, because he hasn't encountered an enemy yet.
 
-	m_HackedGunPos = Vector ( 0, 0, 55 );
+	m_HackedGunPos = Vector (npc_combine_hacked_gunpos_position_posX.GetInt(), npc_combine_hacked_gunpos_position_posY.GetInt(), npc_combine_hacked_gunpos_position_posZ.GetInt() );
 
 	m_flStopMoveShootTime = FLT_MAX; // Move and shoot defaults on.
-	m_MoveAndShootOverlay.SetInitialDelay( 0.75 ); // But with a bit of a delay.
+	m_MoveAndShootOverlay.SetInitialDelay( npc_combine_move_and_shoot_delay.GetFloat() ); // But with a bit of a delay.
 
 	m_flNextLostSoundTime		= 0;
 	m_flAlertPatrolTime			= 0;
@@ -791,6 +832,10 @@ float CNPC_Combine::MaxYawSpeed( void )
 //-----------------------------------------------------------------------------
 // 
 //-----------------------------------------------------------------------------
+
+ConVar npc_combine_hide_and_reload_time1("npc_combine_hide_and_reload_time1", "0.4", FCVAR_HIDDEN);
+ConVar npc_combine_hide_and_reload_time2("npc_combine_hide_and_reload_time2", "0.6", FCVAR_HIDDEN);
+
 bool CNPC_Combine::ShouldMoveAndShoot()
 {
 	// Set this timer so that gpGlobals->curtime can't catch up to it. 
@@ -802,7 +847,7 @@ bool CNPC_Combine::ShouldMoveAndShoot()
 	m_flStopMoveShootTime = FLT_MAX;
 
 	if( IsCurSchedule( SCHED_COMBINE_HIDE_AND_RELOAD, false ) )
-		m_flStopMoveShootTime = gpGlobals->curtime + random->RandomFloat( 0.4f, 0.6f );
+		m_flStopMoveShootTime = gpGlobals->curtime + random->RandomFloat( npc_combine_hide_and_reload_time1.GetFloat(), npc_combine_hide_and_reload_time2.GetFloat() );
 
 	if( IsCurSchedule( SCHED_TAKE_COVER_FROM_BEST_SOUND, false ) )
 		return false;
@@ -814,10 +859,10 @@ bool CNPC_Combine::ShouldMoveAndShoot()
 		return false;
 
 	if( HasCondition( COND_NO_PRIMARY_AMMO, false ) )
-		m_flStopMoveShootTime = gpGlobals->curtime + random->RandomFloat( 0.4f, 0.6f );
+		m_flStopMoveShootTime = gpGlobals->curtime + random->RandomFloat( npc_combine_hide_and_reload_time1.GetFloat(), npc_combine_hide_and_reload_time2.GetFloat() );
 
 	if( m_pSquad && IsCurSchedule( SCHED_COMBINE_TAKE_COVER1, false ) )
-		m_flStopMoveShootTime = gpGlobals->curtime + random->RandomFloat( 0.4f, 0.6f );
+		m_flStopMoveShootTime = gpGlobals->curtime + random->RandomFloat( npc_combine_hide_and_reload_time1.GetFloat(), npc_combine_hide_and_reload_time2.GetFloat() );
 
 	return BaseClass::ShouldMoveAndShoot();
 }
@@ -845,8 +890,14 @@ Class_T	CNPC_Combine::Classify ( void )
 //-----------------------------------------------------------------------------
 // Purpose: Function for gauging whether we're capable of alt-firing.
 //-----------------------------------------------------------------------------
+
+ConVar npc_combine_is_alt_capable_override("npc_combine_is_alt_capable_override", "1", FCVAR_HIDDEN);
+ConVar npc_combine_is_gren_capable_override("npc_combine_is_gren_capable_override", "1", FCVAR_HIDDEN);
+
 bool CNPC_Combine::IsAltFireCapable( void )
 {
+	if (!npc_combine_is_alt_capable_override.GetBool())
+		return false;
 	// Shields aren't capable of alt-firing
 	if (IsShield())
 		return false;
@@ -861,6 +912,8 @@ bool CNPC_Combine::IsAltFireCapable( void )
 //-----------------------------------------------------------------------------
 bool CNPC_Combine::IsGrenadeCapable( void )
 {
+	if (!npc_combine_is_gren_capable_override.GetBool())
+		return false;
 	// Shields aren't capable of throwing grenades even if they have grenades
 	if (IsShield())
 		return false;
@@ -1538,6 +1591,7 @@ bool CNPC_Combine::FVisible( CBaseEntity *pEntity, int traceMask, CBaseEntity **
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+
 void CNPC_Combine::Event_Killed( const CTakeDamageInfo &info )
 {
 	// if I was killed before I could finish throwing my grenade, drop
@@ -1913,6 +1967,10 @@ void CNPC_Combine::AnnounceEnemyKill( CBaseEntity *pEnemy )
 //-----------------------------------------------------------------------------
 // Select the combat schedule
 //-----------------------------------------------------------------------------
+
+ConVar npc_combine_establish_los_chance("npc_combine_establish_los_chance", "60", FCVAR_HIDDEN);
+ConVar npc_combine_crouch_when_light_damage_chance("npc_combine_crouch_when_light_damage_chance", "50", FCVAR_HIDDEN);
+
 int CNPC_Combine::SelectCombatSchedule()
 {
 	// -----------
@@ -2020,7 +2078,7 @@ int CNPC_Combine::SelectCombatSchedule()
 
 				if (!bFirstContact && OccupyStrategySlotRange(SQUAD_SLOT_ATTACK1, SQUAD_SLOT_ATTACK2))
 				{
-					if (random->RandomInt(0, 100) < 60)
+					if (random->RandomInt(0, 100) < npc_combine_establish_los_chance.GetInt())
 					{
 						return SCHED_ESTABLISH_LINE_OF_FIRE;
 					}
@@ -2067,7 +2125,7 @@ int CNPC_Combine::SelectCombatSchedule()
 			// A crouching guy tries to stay stuck in.
 			if( !IsCrouching() )
 			{
-				if( GetEnemy() && random->RandomFloat( 0, 100 ) < 50 && CouldShootIfCrouching( GetEnemy() ) )
+				if( GetEnemy() && random->RandomFloat( 0, 100 ) < npc_combine_crouch_when_light_damage_chance.GetInt() && CouldShootIfCrouching(GetEnemy()))
 				{
 					Crouch();
 				}
