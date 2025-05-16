@@ -3604,7 +3604,7 @@ int CNPC_AttackHelicopter::OnTakeDamage( const CTakeDamageInfo &info )
 		{
 			damage = GetMaxHealth() / sk_helicopter_num_bombs1.GetFloat();
 		}
-		else if( g_pGameRules->IsSkillLevel(SKILL_HARD) )
+		else if( g_pGameRules->IsDifficultyHigher() )
 		{
 			damage = GetMaxHealth() / sk_helicopter_num_bombs3.GetFloat();
 		}
