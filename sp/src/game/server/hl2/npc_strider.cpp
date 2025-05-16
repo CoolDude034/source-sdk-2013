@@ -3164,7 +3164,7 @@ int CNPC_Strider::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 				{
 					damage = GetMaxHealth() / sk_strider_num_missiles1.GetFloat();
 				}
-				else if( g_pGameRules->IsSkillLevel(SKILL_HARD) )
+				else if( g_pGameRules->IsDifficultyHigher() )
 				{
 					damage = GetMaxHealth() / sk_strider_num_missiles3.GetFloat();
 				}
