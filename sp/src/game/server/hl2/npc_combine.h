@@ -81,6 +81,7 @@ public:
 
 	// If true, will spawn with a ballistic shield
 	bool		m_bIsShield;
+	CBaseEntity* pShield;
 
 	void Event_Killed( const CTakeDamageInfo &info );
 
