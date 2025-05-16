@@ -1153,7 +1153,7 @@ void CNPC_Antlion::HandleAnimEvent( animevent_t *pEvent )
 				SetNextAttack( gpGlobals->curtime + flTime + random->RandomFloat( 0.5f, 2.0f ) );
 
 				// Tell any squadmates not to fire for some portion of the time this volley will be in the air (except on hard)
-				if ( g_pGameRules->IsSkillLevel( SKILL_HARD ) == false )
+				if ( !g_pGameRules->IsDifficultyHigher() )
 					DelaySquadAttack( flTime );
 
 				for ( int i = 0; i < 6; i++ )
