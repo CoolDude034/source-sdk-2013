@@ -46,14 +46,22 @@ extern ConVar sk_plr_num_shotgun_pellets;
 //Whether or not the combine should spawn health on death
 ConVar	combine_spawn_health( "combine_spawn_health", "1" );
 
-ConVar sk_shield_model("sk_shield_model", "models/shield.mdl", FCVAR_HIDDEN);
-ConVar sk_shield_offset_x("sk_shield_offset_x", "10.5", FCVAR_HIDDEN);
-ConVar sk_shield_offset_y("sk_shield_offset_y", "0", FCVAR_HIDDEN);
-ConVar sk_shield_offset_z("sk_shield_offset_z", "40.9", FCVAR_HIDDEN);
-ConVar sk_shield_despawn_t("sk_shield_despawn_t", "5", FCVAR_HIDDEN);
-ConVar sk_shield_attached_to_attachment("sk_shield_attached_to_attachment", "0", FCVAR_HIDDEN); // Do not set to 1
-ConVar sk_shield_attachment_point("sk_shield_attachment_point", "lefthand", FCVAR_HIDDEN);
-ConVar sk_shield_destroy_shield_instead_of_drop("sk_shield_destroy_shield_instead_of_drop", "0", FCVAR_HIDDEN);
+extern ConVar sk_shield_model;
+extern ConVar sk_shield_offset_x;
+extern ConVar sk_shield_offset_y;
+extern ConVar sk_shield_offset_z;
+extern ConVar sk_shield_despawn_t;
+extern ConVar sk_shield_attached_to_attachment;
+extern ConVar sk_shield_attachment_point;
+extern ConVar sk_shield_destroy_shield_instead_of_drop;
+extern ConVar sk_shield_spawn_chance;
+extern ConVar sk_shield_rotate_aim_angleX;
+extern ConVar sk_shield_rotate_aim_angleY;
+extern ConVar sk_shield_rotate_aim_angleZ;
+extern ConVar sk_shield_aiming_animation_override;
+
+extern ConVar sv_all_combines_are_sayoris;
+extern ConVar sv_all_combines_are_yuris;
 
 LINK_ENTITY_TO_CLASS( npc_combine_s, CNPC_CombineS );
 
@@ -70,11 +78,19 @@ void CNPC_CombineS::Spawn( void )
 {
 	if (IsSuppressor())
 	{
-		SetModelName(AllocPooledString("models/combine_soldier_suppressor.mdl"));
+		SetModelName(MAKE_STRING("models/combine_soldier_suppressor.mdl"));
 	}
 	else if (IsCharger())
 	{
-		SetModelName(AllocPooledString("models/combine_soldier_charger.mdl"));
+		SetModelName(MAKE_STRING("models/combine_soldier_charger.mdl"));
+	}
+	if (sv_all_combines_are_sayoris.GetBool())
+	{
+		SetModelName(MAKE_STRING("models/humans/ddlc/sayori_enemy.mdl"));
+	}
+	else if (sv_all_combines_are_yuris.GetBool())
+	{
+		SetModelName(MAKE_STRING("models/humans/ddlc/yuri_enemy.mdl"));
 	}
 	Precache();
 	SetModel( STRING( GetModelName() ) );
@@ -143,7 +159,10 @@ void CNPC_CombineS::Spawn( void )
 	}
 
 	CapabilitiesAdd( bits_CAP_ANIMATEDFACE );
-	CapabilitiesAdd( bits_CAP_MOVE_SHOOT );
+	if (!IsShield())
+	{
+		CapabilitiesAdd(bits_CAP_MOVE_SHOOT);
+	}
 	CapabilitiesAdd( bits_CAP_DOORS_GROUP );
 
 	BaseClass::Spawn();
