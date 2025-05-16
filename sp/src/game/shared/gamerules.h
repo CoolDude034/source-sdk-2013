@@ -240,6 +240,20 @@ public:
 
 	virtual bool IsSkillLevel( int iLevel ) { return GetSkillLevel() == iLevel; }
 	virtual int	GetSkillLevel() { return g_iSkillLevel; }
+	// Check if difficulty is Hard or above
+	virtual bool IsDifficultyHigher()
+	{
+		if (IsSkillLevel(SKILL_HARD) || IsSkillLevel(SKILL_VERY_HARD) || IsSkillLevel(SKILL_NIGHTMARE) )
+			return true;
+		return false;
+	}
+	// Checks if the difficulty is Nightmare
+	virtual bool IsNightmareDifficulty()
+	{
+		if (IsSkillLevel(SKILL_NIGHTMARE))
+			return true;
+		return false;
+	}
 #ifdef MAPBASE
 	virtual void OnSkillLevelChanged( int iNewLevel );
 #else

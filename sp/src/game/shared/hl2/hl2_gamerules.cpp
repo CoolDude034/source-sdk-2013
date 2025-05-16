@@ -508,6 +508,34 @@ ConVar  alyx_darkness_force( "alyx_darkness_force", "0", FCVAR_CHEAT | FCVAR_REP
 	//-----------------------------------------------------------------------------
 	void CHalfLife2::PlayerSpawn( CBasePlayer *pPlayer )
 	{
+		KeyValues* pMapData = new KeyValues("MapData");
+		char fileName[MAX_PATH];
+		// Big thanks to grizzledev on Source Engine discord
+		sprintf_s(fileName, MAX_PATH, "maps/%s_map_settings.txt", gpGlobals->mapname.ToCStr());
+		if (pMapData->LoadFromFile(filesystem, fileName, "MOD"))
+		{
+			KeyValues* pLoadoutData = pMapData->FindKey("LoadoutData");
+			if (pLoadoutData)
+			{
+				for (KeyValues* kvSubKey = pLoadoutData->GetFirstSubKey(); kvSubKey != NULL; kvSubKey = kvSubKey->GetNextKey())
+				{
+					pPlayer->GiveNamedItem(kvSubKey->GetName());
+				}
+
+				// Fuck it...Just give every ammo type
+				pPlayer->GiveAmmo(255, "Pistol");
+				pPlayer->GiveAmmo(255, "SMG1");
+				pPlayer->GiveAmmo(255, "AR2");
+				pPlayer->GiveAmmo(255, "357");
+				pPlayer->GiveAmmo(255, "Buckshot");
+				pPlayer->GiveAmmo(255, "XBowBolt");
+				pPlayer->GiveAmmo(255, "SniperRound");
+				pPlayer->GiveAmmo(255, "SniperPenetratedRound");
+
+				pPlayer->EquipSuit();
+			}
+			pMapData->deleteThis();
+		}
 	}
 
 	//-----------------------------------------------------------------------------
@@ -1850,19 +1878,28 @@ void CHalfLife2::AdjustPlayerDamageTaken( CTakeDamageInfo *pInfo )
 		return;
 	}
 
-	switch( GetSkillLevel() )
+	switch (GetSkillLevel())
 	{
 	case SKILL_EASY:
-		pInfo->ScaleDamage( sk_dmg_take_scale1.GetFloat() );
+		pInfo->ScaleDamage(sk_dmg_take_scale1.GetFloat());
 		break;
 
 	case SKILL_MEDIUM:
-		pInfo->ScaleDamage( sk_dmg_take_scale2.GetFloat() );
+		pInfo->ScaleDamage(sk_dmg_take_scale2.GetFloat());
 		break;
 
 	case SKILL_HARD:
-		pInfo->ScaleDamage( sk_dmg_take_scale3.GetFloat() );
+		pInfo->ScaleDamage(sk_dmg_take_scale3.GetFloat());
 		break;
+
+	case SKILL_VERY_HARD:
+		pInfo->ScaleDamage(sk_dmg_take_scale3.GetFloat() * GetSkillLevel()); // 3
+		break;
+
+	case SKILL_NIGHTMARE:
+		pInfo->ScaleDamage(sk_dmg_take_scale3.GetFloat() * GetSkillLevel()); // 3.75
+		break;
+
 	}
 }
 
@@ -1882,6 +1919,14 @@ float CHalfLife2::AdjustPlayerDamageInflicted( float damage )
 
 	case SKILL_HARD:
 		return damage * sk_dmg_inflict_scale3.GetFloat();
+		break;
+
+	case SKILL_VERY_HARD:
+		return damage * sk_dmg_inflict_scale3.GetFloat() / GetSkillLevel(); // 0.75 divided by 4, equals 0.1875
+		break;
+
+	case SKILL_NIGHTMARE:
+		return damage * sk_dmg_inflict_scale3.GetFloat() / GetSkillLevel(); // 0.75 divided by 5, equals 0.15
 		break;
 
 	default:
@@ -1953,6 +1998,8 @@ float CHalfLife2::GetAutoAimScale( CBasePlayer *pPlayer )
 //---------------------------------------------------------
 float CHalfLife2::GetAmmoQuantityScale( int iAmmoIndex )
 {
+	if (IsDifficultyHigher())
+		return sk_ammo_qty_scale3.GetFloat();
 	switch( GetSkillLevel() )
 	{
 	case SKILL_EASY:

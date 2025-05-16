@@ -269,6 +269,8 @@ enum CastVote
 #define SKILL_EASY		1
 #define SKILL_MEDIUM	2
 #define SKILL_HARD		3
+#define SKILL_VERY_HARD	4
+#define SKILL_NIGHTMARE 5
 
 
 // Weapon flags
