@@ -3,69 +3,87 @@
 #include "cbase.h"
 #include "monstermaker.h"
 
+enum AssaultStage
+{
+	ASSAULT_DIRECTOR_PHASE_CONTROL = 0,
+	ASSAULT_DIRECTOR_PHASE_BUILDUP,
+	ASSAULT_DIRECTOR_PHASE_ANTICIPATION,
+	ASSAULT_DIRECTOR_PHASE_ASSAULT,
+	ASSAULT_DIRECTOR_PHASE_FADE
+};
+
+struct SpawnEntry
+{
+	string_t m_EnemyType; // can either be "combine", "police" or "rebels"
+	string_t m_EnemyModel;
+	string_t m_SpawnType;
+	string_t m_WeaponOverride;
+	string_t m_SquadOverride;
+	string_t m_HintOverride;
+	float m_weight;
+};
+
+struct SpawnPoint
+{
+	Vector pos;
+	QAngle rot;
+	bool m_bShouldRappel;
+};
+
 class CLogicAssault : public CLogicalEntity
 {
 	DECLARE_CLASS(CLogicAssault, CLogicalEntity);
+	DECLARE_DATADESC();
 public:
 	CLogicAssault();
 	void Spawn(void);
 	void Precache(void);
 	void AssaultThink(void);
-	void SUB_DoNothing(void) {};
 	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity);
-	bool CanMakeNPC(bool bIgnoreSolidEntities = false, CNPCSpawnDestination* pSpawnPoint = NULL);
-	CNPCSpawnDestination* FindSpawnDestination();
+	bool CanMakeNPC(bool bIgnoreSolidEntities = false, const Vector& pSpawnPoint = vec3_origin);
+	void SUB_DoNothing() {};
 	void DeathNotice(CBaseEntity* pChild);
 	void MakeNPC(void);
-	void Enable(void);
-	void Disable(void);
+	void StartDirector(void);
 	void ChildPostSpawn(CAI_BaseNPC* pChild);
 	const char* GetEnemyType();
 	virtual bool KeyValue(const char* szKeyName, const char* szValue);
-
-	DECLARE_DATADESC();
 private:
-	int m_iMaxEnemies;
-
-	bool m_bDisabled;
-	bool m_bEndlessWaves; // if enabled, the m_iMaxWaves value is ignored and waves go on and on
-	bool m_bUseOverrides;
+	bool m_bStartDisabled; // should the assault director start disabled
+	int m_iMaxEnemies; // max number of enemies there can be at once (spawn cap)
 	int m_iNumEnemies; // total enemies, counts each NPC spawned and killed
-	int m_iMinEnemiesToKillToProgress; // number of enemies to kill to advance the wave
-	int m_iMinEnemiesToKillToProgressCounter; // the counter for the above
-	int m_iNumWave; // the wave number to keep track of, when spawning enemy squads
-	int m_iMaxWaves; // the maximum number of waves the assault will have
-	int m_iPhase; // the phase of this wave, each wave has three phases before proceeding to the next wave and resetting this value
-	int m_iMinEnemiesToEndWave; // how many enemies there can be on the map before the wave ends
-	string_t m_EnemyType;
-	string_t m_EnemyModel;
+	int m_iNumAssaultWave; // assault wave counter
+	int g_assaultStage;
+
+	float m_fDiff; // assault intensity, yk like how payday does it
 
 	float m_fShotgunChance;
 	float m_fAR2Chance;
 	float m_fGrenadeChance;
 	int m_iGrenadeCount;
+	float m_fEnemyMedicChance;
+	float m_fEnemyShieldChance;
 
-	float m_flSpawnFrequency; // how often spawn attempts occur
-	float m_flTimeUntilNextWave; // time until next wave
-
-	float m_fEnemyCitizenMedicChance;
-
-	int m_iTacticalVariant;
+	float m_flPhaseStartTime;
+	float m_flAssaultDuration;
+	float m_flFadeDuration;
+	float m_flAnticipationDuration;
+	float m_flBuildDuration;
+	float m_flInitialDelay;
 
 	string_t m_SpawnType;
 	float m_fSpawnDistance;
+	float m_flSpawnFrequency; // how often spawn attempts occur
 
-	bool m_bShouldUpdateEnemies;
-	bool m_bIsAssaultActivated;
+	const SpawnEntry& WeightedRandomSpawnEntry();
 
-	void InputEnable(inputdata_t& inputdata);
-	void InputDisable(inputdata_t& inputdata);
-	void InputChangeModel(inputdata_t& inputdata);
+	void InputStartAssault(inputdata_t& inputdata);
 
-	COutputEHANDLE m_OnSpawnNPC; // Fired when the wave spawns an NPC (!activator is the NPC)
-	COutputInt m_OnNextWave; // Fired when the next wave arrives
-	COutputEvent m_OnAllWavesDefeated; // Fired when all waves are defeated (only if endless waves isn't set)
-	COutputEvent m_OnAssaultStart; // Fired when the assault starts (happens once per entity)
+	CUtlVector<SpawnPoint> m_spawnPoints;
+	CUtlVector<SpawnEntry> m_SpawnPool;
+
+	COutputEvent m_OnAssaultEnd; // Fired when the assault ends
+	COutputEvent m_OnAssaultStart; // Fired when the assault starts
 };
 
 #endif
