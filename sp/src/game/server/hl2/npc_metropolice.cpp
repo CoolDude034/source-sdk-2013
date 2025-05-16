@@ -692,7 +692,7 @@ void CNPC_MetroPolice::Spawn( void )
 {
 	if (IsElite())
 	{
-		SetModelName(AllocPooledString("models/elite_police.mdl"));
+		SetModelName(MAKE_STRING("models/elite_police.mdl"));
 	}
 	Precache();
 
@@ -5223,7 +5223,7 @@ int CNPC_MetroPolice::TranslateSchedule( int scheduleType )
 			if ( m_pSquad )
 			{
 				// Have to explicitly check innate range attack condition as may have weapon with range attack 2
-				if (	g_pGameRules->IsSkillLevel( SKILL_HARD )	&& 
+				if (	g_pGameRules->IsDifficultyHigher() &&
 					HasCondition(COND_CAN_RANGE_ATTACK2)		&&
 					OccupyStrategySlot( SQUAD_SLOT_SPECIAL_ATTACK ) )
 				{
