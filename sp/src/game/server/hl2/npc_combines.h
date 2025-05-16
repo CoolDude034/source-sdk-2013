@@ -49,8 +49,6 @@ public:
 private:
 	bool		ShouldHitPlayer( const Vector &targetDir, float targetDist );
 
-	CBaseEntity* pShield;
-
 #if HL2_EPISODIC
 public:
 	Activity	NPC_TranslateActivity( Activity eNewActivity );
