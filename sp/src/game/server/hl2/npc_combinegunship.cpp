@@ -2986,7 +2986,7 @@ int	CNPC_CombineGunship::OnTakeDamage_Alive( const CTakeDamageInfo &inputInfo )
 		{
 			iHealthIncrements = ceil( iHealthIncrements * 0.5 );
 		}
-		else if ( g_pGameRules->IsSkillLevel( SKILL_HARD ) )
+		else if ( g_pGameRules->IsDifficultyHigher() )
 		{
 			iHealthIncrements = floor( iHealthIncrements * 1.5 );
 		}
