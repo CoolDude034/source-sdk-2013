@@ -26,6 +26,8 @@ private:
 	COutputEvent m_OnEasy;
 	COutputEvent m_OnMedium;
 	COutputEvent m_OnHard;
+	COutputEvent m_OnVeryHard;
+	COutputEvent m_OnNightmare;
 
 	bool m_bListeningForSkillChanges;
 
@@ -49,6 +51,8 @@ BEGIN_DATADESC( CLogicSkill )
 	DEFINE_OUTPUT( m_OnEasy, "OnEasy" ),
 	DEFINE_OUTPUT( m_OnMedium, "OnNormal" ),
 	DEFINE_OUTPUT( m_OnHard, "OnHard" ),
+	DEFINE_OUTPUT(m_OnVeryHard, "OnVeryHard"),
+	DEFINE_OUTPUT(m_OnNightmare, "OnNightmare"),
 
 END_DATADESC()
 
@@ -62,5 +66,7 @@ void CLogicSkill::InputTest( inputdata_t &inputdata )
 	case SKILL_EASY:	m_OnEasy.FireOutput(this, this); break;
 	case SKILL_MEDIUM:	m_OnMedium.FireOutput(this, this); break;
 	case SKILL_HARD:	m_OnHard.FireOutput(this, this); break;
+	case SKILL_VERY_HARD:	m_OnVeryHard.FireOutput(this, this); break;
+	case SKILL_NIGHTMARE:	m_OnNightmare.FireOutput(this, this); break;
 	}
 }
