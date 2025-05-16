@@ -2165,7 +2165,7 @@ int CNPC_AntlionGuard::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 	}
 
 	// Hack to make antlion guard harder in HARD
-	if ( g_pGameRules->IsSkillLevel(SKILL_HARD) && !(info.GetDamageType() & DMG_CRUSH) )
+	if ( g_pGameRules->IsDifficultyHigher() && !(info.GetDamageType() & DMG_CRUSH) )
 	{
 		dInfo.SetDamage( dInfo.GetDamage() * 0.75 );
 	}
