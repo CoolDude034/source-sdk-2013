@@ -252,8 +252,8 @@ public:
 	int IRelationPriority( CBaseEntity *pTarget );
 	bool IsFastSniper()
 	{
-		// On Hard, Hidden Snipers will shoot faster
-		if (!HasSpawnFlags(SF_SNIPER_HIDDEN) && GameRules()->GetSkillLevel() == SKILL_HARD)
+		// On Nightmare, Hidden Snipers will shoot faster
+		if (HasSpawnFlags(SF_SNIPER_HIDDEN) && GameRules()->IsNightmareDifficulty() )
 			return true;
 		return HasSpawnFlags(SF_SNIPER_FAST);
 	}
