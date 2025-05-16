@@ -84,9 +84,9 @@ BEGIN_DATADESC( CBaseNPCMaker )
 	DEFINE_KEYFIELD( m_nMaxLiveChildren,		FIELD_INTEGER,	"MaxLiveChildren" ),
 	DEFINE_KEYFIELD( m_flSpawnFrequency,		FIELD_FLOAT,	"SpawnFrequency" ),
 	DEFINE_KEYFIELD( m_bDisabled,			FIELD_BOOLEAN,	"StartDisabled" ),
+	DEFINE_KEYFIELD( m_bIsDynamicSpawn,		FIELD_BOOLEAN, "DynamicSpawn"),
 
 	DEFINE_FIELD(	m_nLiveChildren,		FIELD_INTEGER ),
-	DEFINE_FIELD(	m_bIsDynamicSpawn,		FIELD_BOOLEAN),
 
 	// Inputs
 	DEFINE_INPUTFUNC( FIELD_VOID,	"Spawn",	InputSpawnNPC ),
@@ -405,23 +405,6 @@ CNPCMaker::CNPCMaker( void )
 
 	if (m_bIsDynamicSpawn)
 	{
-		if (random->RandomFloat() < dyn_spawner_weapon_slot1_chance.GetFloat())
-		{
-			m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot1.GetString());
-		}
-		if (random->RandomFloat() < dyn_spawner_weapon_slot2_chance.GetFloat())
-		{
-			m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot2.GetString());
-		}
-		if (random->RandomFloat() < dyn_spawner_weapon_slot3_chance.GetFloat())
-		{
-			m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot3.GetString());
-		}
-		if (random->RandomFloat() < dyn_spawner_weapon_slot4_chance.GetFloat())
-		{
-			m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot4.GetString());
-		}
-
 		m_iszNPCClassname = MAKE_STRING("npc_combine_s");
 		m_SquadName = MAKE_STRING("squad_reinforcements");
 	}
@@ -498,6 +481,22 @@ void CNPCMaker::MakeNPC( void )
 		pent->SetModelName(MAKE_STRING(dyn_spawner_soldier_model.GetString()));
 		pent->KeyValue("NumGrenades", dyn_spawner_grenade_amount.GetString());
 		pent->KeyValue("tacticalvariant", "2");
+		if (random->RandomFloat() < dyn_spawner_weapon_slot1_chance.GetFloat())
+		{
+			pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot1.GetString());
+		}
+		else if (random->RandomFloat() < dyn_spawner_weapon_slot2_chance.GetFloat())
+		{
+			pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot2.GetString());
+		}
+		else if (random->RandomFloat() < dyn_spawner_weapon_slot3_chance.GetFloat())
+		{
+			pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot3.GetString());
+		}
+		else if (random->RandomFloat() < dyn_spawner_weapon_slot4_chance.GetFloat())
+		{
+			pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot4.GetString());
+		}
 		if (m_bWaitingOnRappel)
 		{
 			pent->KeyValue("waitingtorappel", "1");
