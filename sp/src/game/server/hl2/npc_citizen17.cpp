@@ -1059,7 +1059,7 @@ Class_T	CNPC_Citizen::Classify()
 		return CLASS_COMBINE;
 	if (NameMatches("npc_rioter_*"))
 		return CLASS_CITIZEN_REBEL;
-	if (m_Type == CT_REBEL_HOSTILE) // conscripts are used for hostile rebels spawned as part of assaults
+	if (m_Type == CT_REBEL_HOSTILE) // a hostile variant of the rebel
 		return CLASS_CONSCRIPT;
 	if (GlobalEntity_GetState("gordon_precriminal") == GLOBAL_ON)
 		return CLASS_CITIZEN_PASSIVE;
