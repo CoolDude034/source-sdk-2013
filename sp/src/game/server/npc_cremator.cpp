@@ -32,14 +32,14 @@ LINK_ENTITY_TO_CLASS(npc_cremator, CNPC_Cremator);
 
 CNPC_Cremator::CNPC_Cremator()
 {
-	m_iszVScripts = AllocPooledString("npcs/entities/cremator");
+	m_iszVScripts = MAKE_STRING("npcs/entities/cremator");
 }
 
 void CNPC_Cremator::Spawn(void)
 {
-	SetModelName(AllocPooledString(CREMATOR_MODEL_NAME));
+	SetModelName(MAKE_STRING(CREMATOR_MODEL_NAME));
 	Precache();
-	SetModel(CREMATOR_MODEL_NAME);
+	SetModel(STRING(GetModelName()));
 	SetHullType(HULL_MEDIUM);
 	SetHullSizeNormal();
 	SetSolid(SOLID_BBOX);
