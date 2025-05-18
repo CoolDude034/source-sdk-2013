@@ -73,6 +73,7 @@ ConVar sniperrifle_offset_y_attachment("sniperrifle_offset_y_attachment", "-7.5"
 ConVar sniperrifle_offset_z_attachment("sniperrifle_offset_z_attachment", "0");
 
 ConVar sv_npc_sniper_use_aiming_anims("sv_npc_sniper_use_aiming_anims", "1");
+ConVar sv_npc_sniper_should_rotate_body("sv_npc_sniper_should_rotate_body", "1");
 
 ConVar sk_npc_sniper_firerate("sk_npc_sniper_firerate", "5.0");
 
@@ -2770,6 +2771,14 @@ void CProtoSniper::PrescheduleThink( void )
 	// If the enemy has been out of sight for a full second, mark him eluded.
 	if( GetEnemy() != NULL )
 	{
+		if (sv_npc_sniper_should_rotate_body.GetBool() && !HasSpawnFlags(SF_SNIPER_HIDDEN))
+		{
+			// Rotate and face the target
+			Vector posToLookAt = GetEnemy()->GetAbsOrigin() - GetAbsOrigin();
+			QAngle angles;
+			VectorAngles(posToLookAt, angles);
+			SetAbsAngles(QAngle(0, angles.y, 0));
+		}
 		if( gpGlobals->curtime - GetEnemies()->LastTimeSeen( GetEnemy() ) > 30 )
 		{
 			// Stop pestering enemies after 30 seconds of frustration.
