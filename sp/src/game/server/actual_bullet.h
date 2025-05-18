@@ -6,6 +6,8 @@
 #include "baseentity_shared.h"
 #include "baseanimating.h"
 
+extern ConVar sk_bullet_speed_submerged_value;
+
 class CActualBullet : public CBaseAnimating
 {
 	DECLARE_CLASS(CActualBullet, CBaseAnimating);
@@ -32,6 +34,13 @@ inline void FireActualBullet(FireBulletsInfo_t& info, int iSpeed, const char* tr
 		return;
 	}
 	int iShots = info.m_iShots;
+
+	if (info.m_pAttacker->IsPlayer())
+	{
+		CBasePlayer* pPlayer = ToBasePlayer(info.m_pAttacker);
+		if (pPlayer && pPlayer->IsPlayerUnderwater() && pPlayer->GetWaterLevel() == WL_Eyes)
+			iSpeed /= sk_bullet_speed_submerged_value.GetInt();
+	}
 
 	for (int i = 0; i < iShots; i++)
 	{
