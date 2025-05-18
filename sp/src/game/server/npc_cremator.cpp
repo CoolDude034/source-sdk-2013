@@ -32,7 +32,6 @@ LINK_ENTITY_TO_CLASS(npc_cremator, CNPC_Cremator);
 
 CNPC_Cremator::CNPC_Cremator()
 {
-	m_iszVScripts = MAKE_STRING("npcs/entities/cremator");
 }
 
 void CNPC_Cremator::Spawn(void)
