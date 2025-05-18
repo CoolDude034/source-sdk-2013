@@ -1,6 +1,6 @@
 //=============================================================================//
 //
-// Purpose: Central assault manager, spawns enemies trough assault waves similar to games like PAYDAY
+// Purpose: Central assault manager, spawns enemies trough assault waves similar to games like PAYDAY and Left 4 Dead's AI Director
 //			Most of this code is from monstermaker.cpp but repurposed
 //
 //=============================================================================//
@@ -22,7 +22,6 @@ LINK_ENTITY_TO_CLASS(logic_assault, CLogicAssault);
 BEGIN_DATADESC(CLogicAssault)
 
 DEFINE_KEYFIELD(m_bStartDisabled, FIELD_BOOLEAN, "StartDisabled"),
-DEFINE_KEYFIELD(m_flInitialDelay, FIELD_FLOAT, "InitialDelay"), // initial delay set by hammer I/O
 
 DEFINE_FIELD(m_iMaxEnemies, FIELD_INTEGER),
 DEFINE_FIELD(m_iNumEnemies, FIELD_INTEGER),
@@ -35,14 +34,17 @@ DEFINE_FIELD(m_fGrenadeChance, FIELD_FLOAT),
 DEFINE_FIELD(m_fEnemyMedicChance, FIELD_FLOAT),
 DEFINE_FIELD(m_flSpawnFrequency, FIELD_FLOAT),
 DEFINE_FIELD(m_flPhaseStartTime, FIELD_TIME),
+DEFINE_FIELD(m_fNextSpawnTime, FIELD_TIME),
 DEFINE_FIELD(m_fDiff, FIELD_FLOAT),
 
 DEFINE_FIELD(m_flBuildDuration, FIELD_FLOAT),
 DEFINE_FIELD(m_flAssaultDuration, FIELD_FLOAT),
 DEFINE_FIELD(m_flFadeDuration, FIELD_FLOAT),
 DEFINE_FIELD(m_flAnticipationDuration, FIELD_FLOAT),
+DEFINE_FIELD(m_flControlDuration, FIELD_FLOAT),
 
 DEFINE_INPUTFUNC(FIELD_VOID, "StartAssault", InputStartAssault),
+DEFINE_INPUTFUNC(FIELD_FLOAT, "SetDifficulty", InputSetDifficulty),
 
 DEFINE_OUTPUT(m_OnAssaultStart, "OnAssaultStart"),
 DEFINE_OUTPUT(m_OnAssaultEnd, "OnAssaultEnd"),
@@ -51,6 +53,30 @@ END_DATADESC()
 void CLogicAssault::InputStartAssault(inputdata_t& inputdata)
 {
 	StartDirector();
+}
+
+void CLogicAssault::InputSetDifficulty(inputdata_t& inputdata)
+{
+	m_fDiff = inputdata.value.Float();
+}
+
+// why doesn't this fucking work and just crash is beyond me
+void CLogicAssault::UpdateEnemies()
+{
+	int count = 0;
+	for (int i = m_spawnedEnemies.Count() - 1; i >= 0; i--) // was iterating forward, changed it to backward iteration
+	{
+		if (m_spawnedEnemies[i] && UTIL_IsValidEntity(m_spawnedEnemies[i])) // if the EHANDLE is valid
+		{
+			count++;
+		}
+		else
+		{
+			m_spawnedEnemies.Remove(i);
+			DevMsg("Removing entity, as it's EHANDLE isn't valid.\n");
+		}
+	}
+	m_iNumEnemies = count;
 }
 
 CLogicAssault::CLogicAssault()
@@ -62,7 +88,7 @@ CLogicAssault::CLogicAssault()
 	sprintf_s(fileName, MAX_PATH, "maps/%s_assault_wavedata.txt", gpGlobals->mapname.ToCStr());
 	if (pKeyValues->LoadFromFile(filesystem, fileName, "MOD"))
 	{
-		KeyValues* pSpawnPool = pKeyValues->FindKey("SpawnPool", true);
+		KeyValues* pSpawnPool = pKeyValues->FindKey("SpawnPool");
 		if (pSpawnPool)
 		{
 			for (KeyValues* kvSubKey = pSpawnPool->GetFirstSubKey(); kvSubKey != NULL; kvSubKey = kvSubKey->GetNextKey())
@@ -78,7 +104,7 @@ CLogicAssault::CLogicAssault()
 				m_SpawnPool.AddToTail(entry);
 			}
 		}
-		KeyValues* pAssaultData = pKeyValues->FindKey("AssaultData", true);
+		KeyValues* pAssaultData = pKeyValues->FindKey("AssaultData");
 		if (pAssaultData)
 		{
 			for (KeyValues* kvSubKey = pAssaultData->GetFirstSubKey(); kvSubKey != NULL; kvSubKey = kvSubKey->GetNextKey())
@@ -89,16 +115,17 @@ CLogicAssault::CLogicAssault()
 				m_fGrenadeChance = kvSubKey->GetFloat("GrenadeChance", 0.25F);
 				m_fEnemyMedicChance = kvSubKey->GetFloat("EnemyMedicChance", 0.15F); // as of now, only rebels have medics
 				m_fEnemyShieldChance = kvSubKey->GetFloat("EnemyShieldChance", 0.15F);
-				m_flSpawnFrequency = kvSubKey->GetFloat("SpawnFrequency", 0.1F);
+				m_flSpawnFrequency = kvSubKey->GetFloat("SpawnFrequency", 1.0F);
 
 				// Retrieve this shit
+				m_flControlDuration = kvSubKey->GetFloat("ControlDuration", 25.0F);
 				m_flBuildDuration = kvSubKey->GetFloat("BuildDuration", 15.0F);
 				m_flAnticipationDuration = kvSubKey->GetFloat("AnticipationDuration", 5.0F);
 				m_flAssaultDuration = kvSubKey->GetFloat("AssaultDuration", 150.0F);
 				m_flFadeDuration = kvSubKey->GetFloat("FadeDuration", 15.0F);
 			}
 		}
-		KeyValues* pSpawnData = pKeyValues->FindKey("SpawnData", true);
+		KeyValues* pSpawnData = pKeyValues->FindKey("SpawnData");
 		if (pSpawnData)
 		{
 			// We iterate trough a list of positions and store them in an array
@@ -112,16 +139,19 @@ CLogicAssault::CLogicAssault()
 				entry.pos = pVector;
 				entry.rot = pAngle;
 				entry.m_bShouldRappel = kvSubKey->GetBool("ShouldRappel");
+				entry.m_hintGroup = MAKE_STRING(kvSubKey->GetString("HintGroup"));
 				m_spawnPoints.AddToTail(entry);
 			}
 		}
 		pKeyValues->deleteThis();
 	}
+
+	g_assaultStage = ASSAULT_DIRECTOR_PHASE_CONTROL;
+	m_fDiff = 0.0f;
 }
 
 void CLogicAssault::Spawn(void)
 {
-	g_assaultStage = ASSAULT_DIRECTOR_PHASE_CONTROL;
 	if (m_bStartDisabled)
 	{
 		SetThink(&CLogicAssault::SUB_DoNothing);
@@ -129,13 +159,17 @@ void CLogicAssault::Spawn(void)
 	else
 	{
 		SetThink(&CLogicAssault::AssaultThink);
-		SetNextThink(gpGlobals->curtime); // think now!
+		//SetNextThink(gpGlobals->curtime + 0.05f);
 		m_flPhaseStartTime = gpGlobals->curtime;
+		m_fNextSpawnTime = gpGlobals->curtime + m_flSpawnFrequency;
 	}
+
+	BaseClass::Spawn();
 }
 
 void CLogicAssault::Precache(void)
 {
+	BaseClass::Precache();
 	for (int i = 0; i < m_SpawnPool.Count(); i++)
 	{
 		const SpawnEntry& entry = m_SpawnPool[i];
@@ -151,60 +185,70 @@ void CLogicAssault::AssaultThink(void)
 	switch (g_assaultStage)
 	{
 	case ASSAULT_DIRECTOR_PHASE_CONTROL:
-		if (gpGlobals->curtime >= m_flPhaseStartTime + m_flInitialDelay)
+		if (gpGlobals->curtime >= m_flPhaseStartTime + m_flControlDuration)
 		{
-			// We're in control phase, usually only happens once and is the first transition point when triggered by map IO
-			g_assaultStage = ASSAULT_DIRECTOR_PHASE_BUILDUP;
+			// We're in control phase
+			DevMsg("Current Phase: Control\n");
 			m_flPhaseStartTime = gpGlobals->curtime;
+			g_assaultStage = ASSAULT_DIRECTOR_PHASE_BUILDUP;
+			return;
 		}
 		break;
 	case ASSAULT_DIRECTOR_PHASE_BUILDUP:
 		if (gpGlobals->curtime >= m_flPhaseStartTime + m_flBuildDuration)
 		{
 			// The assault is starting to build up...
-			g_assaultStage = ASSAULT_DIRECTOR_PHASE_ANTICIPATION;
+			DevMsg("Current Phase: Buildup\n");
 			m_flPhaseStartTime = gpGlobals->curtime;
+			g_assaultStage = ASSAULT_DIRECTOR_PHASE_ANTICIPATION;
+			return;
 		}
 		break;
 	case ASSAULT_DIRECTOR_PHASE_ANTICIPATION:
 		if (gpGlobals->curtime >= m_flPhaseStartTime + m_flAnticipationDuration)
 		{
-			g_assaultStage = ASSAULT_DIRECTOR_PHASE_ASSAULT;
+			DevMsg("Current Phase: Anticipation\n");
 			m_flPhaseStartTime = gpGlobals->curtime;
+			g_assaultStage = ASSAULT_DIRECTOR_PHASE_ASSAULT;
+			return;
 		}
 		break;
 	case ASSAULT_DIRECTOR_PHASE_ASSAULT:
-		if (m_fDiff > 0.0F && m_iNumEnemies < m_iMaxEnemies)
-		{
-			MakeNPC();
-		}
 		if (gpGlobals->curtime >= m_flPhaseStartTime + m_flAssaultDuration)
 		{
-			g_assaultStage = ASSAULT_DIRECTOR_PHASE_FADE;
+			DevMsg("Current Phase: Assault\n");
 			m_flPhaseStartTime = gpGlobals->curtime;
+			g_assaultStage = ASSAULT_DIRECTOR_PHASE_FADE;
+			return;
+		}
+		if (gpGlobals->curtime >= m_fNextSpawnTime)
+		{
+			if (m_fDiff > 0.0f && m_iNumEnemies < m_iMaxEnemies)
+			{
+				MakeNPC();
+			}
+			DevMsg("Spawning enemies!\n");
+			m_fNextSpawnTime = gpGlobals->curtime + m_flSpawnFrequency;
 		}
 		break;
 	case ASSAULT_DIRECTOR_PHASE_FADE:
 		if (gpGlobals->curtime >= m_flPhaseStartTime + m_flFadeDuration)
 		{
 			// Restart the assault phase
-			g_assaultStage = ASSAULT_DIRECTOR_PHASE_BUILDUP;
+			DevMsg("Current Phase: Fade\n");
 			m_flPhaseStartTime = gpGlobals->curtime;
 			m_iNumAssaultWave++;
+			g_assaultStage = ASSAULT_DIRECTOR_PHASE_CONTROL;
+			return;
 		}
 		break;
 	default:
 		break;
 	}
 
-	if (g_assaultStage == ASSAULT_DIRECTOR_PHASE_ASSAULT)
-	{
-		SetNextThink(gpGlobals->curtime + m_flSpawnFrequency);
-	}
-	else
-	{
-		SetNextThink(gpGlobals->curtime); // think now
-	}
+	UpdateEnemies();
+
+	BaseClass::Think();
 }
 
 //-----------------------------------------------------------------------------
@@ -298,15 +342,6 @@ bool CLogicAssault::CanMakeNPC(bool bIgnoreSolidEntities, const Vector& pSpawnPo
 	return true;
 }
 
-void CLogicAssault::DeathNotice(CBaseEntity* pVictim)
-{
-	// ok, we've gotten the deathnotice from our child, now clear out its owner if we don't want it to fade.
-	m_iNumEnemies--;
-
-	// If we're here, we're getting erroneous death messages from children we haven't created
-	AssertMsg(m_iNumEnemies >= 0, "logic_assault receiving child death notice but thinks has no children\n");
-}
-
 //-----------------------------------------------------------------------------
 // Purpose: Creates the NPC.
 //-----------------------------------------------------------------------------
@@ -317,11 +352,14 @@ void CLogicAssault::MakeNPC(void)
 		const SpawnEntry& entry = WeightedRandomSpawnEntry(); // m_SpawnPool[random->RandomInt(0, m_SpawnPool.Count() - 1)]
 		const SpawnPoint& spawnData = m_spawnPoints[RandomInt(0, m_spawnPoints.Count() - 1)];
 
+		if (spawnData.m_hintGroup != NULL_STRING && entry.m_HintOverride != NULL_STRING && entry.m_HintOverride != spawnData.m_hintGroup)
+			return;
+
 		if (CanMakeNPC(false, spawnData.pos))
 		{
 			CAI_BaseNPC* pent = (CAI_BaseNPC*)CreateEntityByName(GetEnemyType());
 
-			if (!pent)
+			if (!pent || !UTIL_IsValidEntity(pent))
 			{
 				Warning("logic_assault failed to create NPC!\n");
 				return;
@@ -407,51 +445,32 @@ void CLogicAssault::MakeNPC(void)
 			}
 			else if (pent->ClassMatches("npc_metropolice"))
 			{
-				if (entry.m_SpawnType == MAKE_STRING("simplecops"))
+				if (entry.m_EnemyModel != NULL_STRING)
 				{
-					if (entry.m_EnemyModel != NULL_STRING)
-					{
-						pent->SetModelName(entry.m_EnemyModel);
-					}
-					pent->AddSpawnFlags(131072); // Simple Cops
-					if (entry.m_WeaponOverride != NULL_STRING)
-					{
-						pent->m_spawnEquipment = entry.m_WeaponOverride;
-					}
-					else
-					{
-						if (random->RandomFloat() < m_fShotgunChance)
-						{
-							pent->m_spawnEquipment = MAKE_STRING("weapon_shotgun");
-						}
-						else
-						{
-							pent->m_spawnEquipment = MAKE_STRING("weapon_pistol");
-						}
-					}
+					pent->SetModelName(entry.m_EnemyModel);
 				}
 				else
 				{
 					pent->KeyValue("IsElite", "1");
-					if (entry.m_WeaponOverride != NULL_STRING)
+				}
+				if (entry.m_WeaponOverride != NULL_STRING)
+				{
+					pent->m_spawnEquipment = entry.m_WeaponOverride;
+				}
+				else
+				{
+					if (random->RandomFloat() < m_fShotgunChance)
 					{
-						pent->m_spawnEquipment = entry.m_WeaponOverride;
+						pent->m_spawnEquipment = MAKE_STRING("weapon_shotgun");
 					}
 					else
 					{
-						if (random->RandomFloat() < m_fShotgunChance)
-						{
-							pent->m_spawnEquipment = MAKE_STRING("weapon_shotgun");
-						}
-						else
-						{
-							pent->m_spawnEquipment = MAKE_STRING("weapon_smg1");
-						}
+						pent->m_spawnEquipment = MAKE_STRING("weapon_smg1");
 					}
-					if (random->RandomFloat() < m_fGrenadeChance)
-					{
-						pent->KeyValue("NumGrenades", "5");
-					}
+				}
+				if (random->RandomFloat() < m_fGrenadeChance)
+				{
+					pent->KeyValue("NumGrenades", "5");
 				}
 			}
 			else if (pent->ClassMatches("npc_citizen"))
@@ -521,7 +540,7 @@ void CLogicAssault::MakeNPC(void)
 			}
 
 			DispatchSpawn(pent);
-			pent->SetOwnerEntity(this);
+			pent->Activate();
 			ChildPostSpawn(pent);
 
 			if (spawnData.m_bShouldRappel)
@@ -535,7 +554,7 @@ void CLogicAssault::MakeNPC(void)
 				pent->UpdateEnemyMemory(NULL, pPlayer->GetAbsOrigin());
 			}
 
-			m_iNumEnemies++;// count this NPC
+			m_spawnedEnemies.AddToTail(pent);
 		}
 	}
 }
@@ -544,8 +563,9 @@ void CLogicAssault::StartDirector(void)
 {
 	if (!m_bStartDisabled) return;
 	SetThink(&CLogicAssault::AssaultThink);
-	SetNextThink(gpGlobals->curtime);
+	//SetNextThink(gpGlobals->curtime + 0.05f);
 	m_flPhaseStartTime = gpGlobals->curtime;
+	m_fNextSpawnTime = gpGlobals->curtime + m_flSpawnFrequency;
 }
 
 // Taken from monstermaker.cpp
@@ -605,6 +625,11 @@ const SpawnEntry& CLogicAssault::WeightedRandomSpawnEntry()
 		{
 			totalWeight += m_SpawnPool[i].m_weight;
 		}
+		if (totalWeight <= 0.0F)
+		{
+			// All the weights are zero, this not good. ASS
+			return m_SpawnPool[random->RandomInt(0, m_SpawnPool.Count() - 1)];
+		}
 		float randomWeight = random->RandomFloat(0, totalWeight);
 		float current_weight = 0.0f;
 
@@ -617,9 +642,6 @@ const SpawnEntry& CLogicAssault::WeightedRandomSpawnEntry()
 				return m_SpawnPool[i];
 			}
 		}
-
-		// pick random spawn entry
-		return m_SpawnPool[random->RandomInt(0, m_SpawnPool.Count() - 1)];
 	}
 
 	// the system is disabled, so we just pick random one :[
