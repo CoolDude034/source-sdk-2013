@@ -27,6 +27,7 @@ struct SpawnPoint
 {
 	Vector pos;
 	QAngle rot;
+	string_t m_hintGroup;
 	bool m_bShouldRappel;
 };
 
@@ -42,7 +43,6 @@ public:
 	bool HumanHullFits(const Vector& vecLocation, CBaseEntity* pIgnoreEntity);
 	bool CanMakeNPC(bool bIgnoreSolidEntities = false, const Vector& pSpawnPoint = vec3_origin);
 	void SUB_DoNothing() {};
-	void DeathNotice(CBaseEntity* pChild);
 	void MakeNPC(void);
 	void StartDirector(void);
 	void ChildPostSpawn(CAI_BaseNPC* pChild);
@@ -64,12 +64,14 @@ private:
 	float m_fEnemyMedicChance;
 	float m_fEnemyShieldChance;
 
+	float m_fNextSpawnTime;
+
 	float m_flPhaseStartTime;
 	float m_flAssaultDuration;
 	float m_flFadeDuration;
 	float m_flAnticipationDuration;
 	float m_flBuildDuration;
-	float m_flInitialDelay;
+	float m_flControlDuration;
 
 	string_t m_SpawnType;
 	float m_fSpawnDistance;
@@ -78,9 +80,13 @@ private:
 	const SpawnEntry& WeightedRandomSpawnEntry();
 
 	void InputStartAssault(inputdata_t& inputdata);
+	void InputSetDifficulty(inputdata_t& inputdata);
+
+	void UpdateEnemies();
 
 	CUtlVector<SpawnPoint> m_spawnPoints;
 	CUtlVector<SpawnEntry> m_SpawnPool;
+	CUtlVector<EHANDLE> m_spawnedEnemies;
 
 	COutputEvent m_OnAssaultEnd; // Fired when the assault ends
 	COutputEvent m_OnAssaultStart; // Fired when the assault starts
