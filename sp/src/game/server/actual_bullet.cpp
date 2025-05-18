@@ -13,6 +13,8 @@ LINK_ENTITY_TO_CLASS(actual_bullet, CActualBullet);
 BEGIN_DATADESC(CActualBullet)
 END_DATADESC()
 
+ConVar sk_bullet_speed_submerged_value("sk_bullet_speed_submerged_value", "6");
+
 void CActualBullet::Precache()
 {
 	PrecacheModel(BULLET_MODEL);
