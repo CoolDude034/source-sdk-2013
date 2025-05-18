@@ -123,8 +123,6 @@ ConVar sk_shield_aiming_animation_override("sk_shield_aiming_animation_override"
 ConVar sv_all_combines_are_sayoris("sv_all_combines_are_sayoris", "0", FCVAR_HIDDEN | FCVAR_CHEAT | FCVAR_SPONLY);
 ConVar sv_all_combines_are_yuris("sv_all_combines_are_yuris", "0", FCVAR_HIDDEN | FCVAR_CHEAT | FCVAR_SPONLY);
 
-ConVar npc_combine_spawn_with_shield_override("npc_combine_spawn_with_shield_override", "0", FCVAR_HIDDEN | FCVAR_SPONLY);
-
 #define COMBINE_SKIN_DEFAULT		0
 #define COMBINE_SKIN_SHOTGUNNER		1
 
@@ -331,34 +329,6 @@ END_DATADESC()
 CNPC_Combine::CNPC_Combine()
 {
 	m_vecTossVelocity = vec3_origin;
-	if (npc_combine_spawn_with_shield_override.GetBool())
-	{
-		if (random->RandomFloat() < sk_shield_spawn_chance.GetFloat() && !IsElite() && !IsSuppressor() && !IsCharger())
-		{
-			m_bIsShield = true;
-		}
-	}
-
-	if (IsElite())
-	{
-		m_iszVScripts = MAKE_STRING("npcs/entities/elite_unit");
-	}
-	else if (IsSuppressor())
-	{
-		m_iszVScripts = MAKE_STRING("npcs/entities/combine_suppressor");
-	}
-	else if (IsCharger())
-	{
-		m_iszVScripts = MAKE_STRING("npcs/entities/combine_charger");
-	}
-	else if (IsShield())
-	{
-		m_iszVScripts = MAKE_STRING("npcs/entities/shield_unit");
-	}
-	else
-	{
-		m_iszVScripts = MAKE_STRING("npcs/entities/standard_unit");
-	}
 
 	if (npc_combine_tactical_variant_override.GetInt() != -1)
 	{
