@@ -303,6 +303,60 @@ void SpawnAllEntities( int nEntities, HierarchicalSpawn_t *pSpawnList, bool bAct
 	}
 }
 
+bool IsFileLoaded(KeyValues* pKeyValueObject, const char* fileName)
+{
+	FileHandle_t f = filesystem->Open(fileName, "r", "MOD");
+	// i want to kms
+	if (!f)
+	{
+		Warning("MapAdd: Failed to open file. Gordo is confused why it didn't open the file.\n");
+		return false;
+	}
+	int fileSize = filesystem->Size(f);
+	if (fileSize <= 0)
+	{
+		Warning("MapAdd: file is empty or not readable, gordo is now depressed\n");
+		filesystem->Close(f);
+		return false;
+	}
+
+	char* buffer = new char[fileSize + 1];
+	memset(buffer, 0, fileSize + 1); // scary
+
+	int bytesRead = filesystem->Read(buffer, fileSize, f);
+	filesystem->Close(f);
+
+	if (bytesRead != fileSize)
+	{
+		Warning("MapAdd: expected %d bytes but read %d bytes, gordo is baffled by this.\n", fileSize, bytesRead);
+		delete[] buffer;
+		return false;
+	}
+
+	buffer[fileSize] = '\0';
+
+	DevMsg("MapAdd: buffer contents:%s\n", buffer);
+
+	bool didLoad = false;
+
+	if (pKeyValueObject->LoadFromBuffer(fileName, buffer, filesystem))
+	{
+		didLoad = true;
+		DevMsg("MapAdd: Loaded successfully, gordo is pleazed.\n%s\n", fileName);
+	}
+
+	delete[] buffer;
+
+	return didLoad;
+}
+
+struct MapOverrideInfo
+{
+	CUtlVector<KeyValues*> m_entityData;
+};
+bool shouldOverride;
+MapOverrideInfo g_mapOverrideInfo;
+
 //-----------------------------------------------------------------------------
 // Purpose: Only called on BSP load. Parses and spawns all the entities in the BSP.
 // Input  : pMapData - Pointer to the entity data block to parse.
@@ -323,6 +377,21 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 	if ( serverenginetools )
 	{
 		pMapData = serverenginetools->GetEntityData( pMapData );
+	}
+
+	// Custom-implementation of MMod's MapAdd
+	KeyValues* pMapOverride = new KeyValues("MapOverride");
+	char fileName[MAX_PATH];
+	// Big thanks to grizzledev on Source Engine discord
+	sprintf_s(fileName, MAX_PATH, "mapadd/%s.txt", gpGlobals->mapname.ToCStr());
+	shouldOverride = IsFileLoaded(pMapOverride, fileName);
+
+	if (shouldOverride)
+	{
+		for (KeyValues* pEntityData = pMapOverride->GetFirstSubKey(); pEntityData; pEntityData = pEntityData->GetNextKey())
+		{
+			g_mapOverrideInfo.m_entityData.AddToTail(pEntityData);
+		}
 	}
 
 	//  Loop through all entities in the map data, creating each.
@@ -481,7 +550,59 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 		pPointTemplate->FinishBuildingTemplates();
 	}
 
-	SpawnHierarchicalList( nEntities, pSpawnList, bActivateEntities );
+	// Spawn additional entities
+	// hope this doesn't crash again
+	KeyValues* pMapAdd = new KeyValues("MapAdd");
+	bool shouldAddNewEntities = IsFileLoaded(pMapAdd, fileName);
+	if (shouldAddNewEntities)
+	{
+		for (KeyValues* pEntityData = pMapAdd->GetFirstSubKey(); pEntityData; pEntityData = pEntityData->GetNextKey())
+		{
+			if (nEntities < NUM_ENT_ENTRIES)
+			{
+				CBaseEntity* pEntity = CreateEntityByName(pEntityData->GetString("classname", "npc_combine_s"));
+				if (pEntity)
+				{
+					for (KeyValues* kv = pEntityData->GetFirstSubKey(); kv; kv = kv->GetNextKey())
+					{
+						if (Q_stricmp(kv->GetName(), "id") == 0)
+							// Skip hammerid
+							continue;
+						if (Q_stricmp(kv->GetName(), "classname") == 0)
+							// Skip classname
+							continue;
+						pEntity->KeyValue(kv->GetName(), kv->GetString());
+					}
+
+					// In case it defaulted to npc_combine_s, spawn them with a pistol
+					// yeah im using they/them to refer to combines because they are trans
+					// as in transhuman
+					// okay i leave
+					if (!pEntityData->FindKey("additionalequipment"))
+					{
+						pEntity->KeyValue("additionalequipment", "weapon_pistol");
+					}
+
+					pSpawnList[nEntities].m_pEntity = pEntity;
+					pSpawnList[nEntities].m_nDepth = 0;
+					pSpawnList[nEntities].m_pDeferredParent = NULL;
+					pSpawnList[nEntities].m_pDeferredParentAttachment = NULL;
+					pSpawnMapData[nEntities].m_pMapData = "";
+					pSpawnMapData[nEntities].m_iMapDataLength = 0;
+					nEntities++;
+				}
+			}
+			else
+			{
+				Warning("MapAdd: Too many entities! Gordo is overloaded\n");
+			}
+		}
+	}
+
+	SpawnHierarchicalList(nEntities, pSpawnList, bActivateEntities);
+
+	//pMapOverride->deleteThis();
+	pMapAdd->deleteThis();
 
 	delete [] pSpawnMapData;
 	delete [] pSpawnList;
@@ -555,6 +676,29 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 		Error( "classname missing from entity!\n" );
 	}
 
+	// Allow to override map entities >~<
+	// Doesn't work atm, figure out why
+	if (shouldOverride)
+	{
+		Assert(entData.SetValue("classname", className)); //if the function fails it will trigger an assert
+		for (int i = 0; i < g_mapOverrideInfo.m_entityData.Count(); i++)
+		{
+			if (!g_mapOverrideInfo.m_entityData[i]) continue;
+			KeyValues* pEntityData = g_mapOverrideInfo.m_entityData[i];
+			// Overwrite the keyvalues with our custom one :3
+			if (Q_stricmp(pEntityData->GetName(), "id") == 0)
+				// Skip hammerid
+				continue;
+			if (Q_stricmp(pEntityData->GetName(), "classname") == 0)
+				// Skip classname
+				continue;
+			if (Q_stricmp(pEntityData->GetName(), "targetname") == 0)
+				// Skip targetname
+				continue;
+			entData.SetValue(pEntityData->GetName(), const_cast<char*>(pEntityData->GetString()));
+		}
+	}
+
 	pEntity = NULL;
 	if ( !pFilter || pFilter->ShouldCreateEntity( className ) )
 	{
@@ -564,7 +708,7 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 		if ( pFilter )
 			pEntity = pFilter->CreateNextEntity( className );
 		else
-			pEntity = CreateEntityByName(className);
+			pEntity = CreateEntityByName( className );
 
 		//
 		// Set up keyvalues.
