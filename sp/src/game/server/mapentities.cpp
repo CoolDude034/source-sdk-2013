@@ -546,13 +546,10 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 				{
 					FOR_EACH_SUBKEY(pEntityData, kv)
 					{
-						if (Q_stricmp(kv->GetName(), "id") == 0)
-							// Skip hammerid
-							continue;
-						if (Q_stricmp(kv->GetName(), "classname") == 0)
-							// Skip classname
-							continue;
-						pEntity->KeyValue(kv->GetName(), kv->GetString());
+						if (!FStrEq(kv->GetName(), "id") || !FStrEq(kv->GetName(), "classname"))
+						{
+							pEntity->KeyValue(kv->GetName(), kv->GetString());
+						}
 					}
 
 					// In case it defaulted to npc_combine_s, spawn them with a pistol
@@ -571,7 +568,6 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 					pSpawnMapData[nEntities].m_pMapData = "";
 					pSpawnMapData[nEntities].m_iMapDataLength = 0;
 					nEntities++;
-					continue;
 				}
 			}
 			else
