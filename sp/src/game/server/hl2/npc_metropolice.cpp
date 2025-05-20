@@ -125,7 +125,7 @@ ConVar  metropolice_move_and_melee("metropolice_move_and_melee", "1" );
 ConVar  metropolice_charge("metropolice_charge", "1" );
 
 ConVar metropolice_unique_map_behaviors("metropolice_unique_map_behaviors", "1");
-ConVar metropolice_c17_elite_chance("metropolice_c17_elite_chance", "0.45");
+ConVar metropolice_c17_elite_chance("metropolice_c17_elite_chance", "0.75");
 
 #ifdef MAPBASE
 ConVar	metropolice_new_component_behavior("metropolice_new_component_behavior", "1");
@@ -763,9 +763,9 @@ void CNPC_MetroPolice::DoLevelSpecific( void )
 				if (NameMatches("garrison_3nd_floor_cop_4"))
 				{
 					AddSpawnFlags(SF_METROPOLICE_SIMPLE_VERSION);
-					CapabilitiesRemove(bits_CAP_MOVE_GROUND);
 					m_spawnEquipment = MAKE_STRING("weapon_pistol");
 					m_fWeaponDrawn = true;
+					m_bIsStationary = true;
 					eliteChance = 0.0f;
 				}
 			}
@@ -844,7 +844,10 @@ void CNPC_MetroPolice::Spawn( void )
 		CapabilitiesAdd( bits_CAP_TURN_HEAD | bits_CAP_ANIMATEDFACE );
 		CapabilitiesAdd( bits_CAP_AIM_GUN | bits_CAP_MOVE_SHOOT );
 	}
-	CapabilitiesAdd( bits_CAP_MOVE_GROUND );
+	if (!m_bIsStationary)
+	{
+		CapabilitiesAdd(bits_CAP_MOVE_GROUND);
+	}
 	CapabilitiesAdd( bits_CAP_USE_WEAPONS | bits_CAP_NO_HIT_SQUADMATES );
 	CapabilitiesAdd( bits_CAP_SQUAD );
 	CapabilitiesAdd( bits_CAP_DUCK | bits_CAP_DOORS_GROUP );
