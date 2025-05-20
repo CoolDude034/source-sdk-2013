@@ -350,13 +350,6 @@ bool IsFileLoaded(KeyValues* pKeyValueObject, const char* fileName)
 	return didLoad;
 }
 
-struct MapOverrideInfo
-{
-	CUtlVector<KeyValues*> m_entityData;
-};
-bool shouldOverride;
-MapOverrideInfo g_mapOverrideInfo;
-
 //-----------------------------------------------------------------------------
 // Purpose: Only called on BSP load. Parses and spawns all the entities in the BSP.
 // Input  : pMapData - Pointer to the entity data block to parse.
@@ -377,21 +370,6 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 	if ( serverenginetools )
 	{
 		pMapData = serverenginetools->GetEntityData( pMapData );
-	}
-
-	// Custom-implementation of MMod's MapAdd
-	KeyValues* pMapOverride = new KeyValues("MapOverride");
-	char fileName[MAX_PATH];
-	// Big thanks to grizzledev on Source Engine discord
-	sprintf_s(fileName, MAX_PATH, "mapadd/%s.txt", gpGlobals->mapname.ToCStr());
-	shouldOverride = IsFileLoaded(pMapOverride, fileName);
-
-	if (shouldOverride)
-	{
-		for (KeyValues* pEntityData = pMapOverride->GetFirstSubKey(); pEntityData; pEntityData = pEntityData->GetNextKey())
-		{
-			g_mapOverrideInfo.m_entityData.AddToTail(pEntityData);
-		}
 	}
 
 	//  Loop through all entities in the map data, creating each.
@@ -553,17 +531,20 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 	// Spawn additional entities
 	// hope this doesn't crash again
 	KeyValues* pMapAdd = new KeyValues("MapAdd");
-	bool shouldAddNewEntities = IsFileLoaded(pMapAdd, fileName);
-	if (shouldAddNewEntities)
+	char fileName[MAX_PATH];
+	// Big thanks to grizzledev on Source Engine discord
+	sprintf_s(fileName, MAX_PATH, "mapadd/%s.txt", gpGlobals->mapname.ToCStr());
+	//bool shouldAddNewEntities = IsFileLoaded(pMapAdd, fileName);
+	if (pMapAdd->LoadFromFile(filesystem, fileName, "MOD"))
 	{
-		for (KeyValues* pEntityData = pMapAdd->GetFirstSubKey(); pEntityData; pEntityData = pEntityData->GetNextKey())
+		FOR_EACH_SUBKEY(pMapAdd, pEntityData)
 		{
 			if (nEntities < NUM_ENT_ENTRIES)
 			{
 				CBaseEntity* pEntity = CreateEntityByName(pEntityData->GetString("classname", "npc_combine_s"));
 				if (pEntity)
 				{
-					for (KeyValues* kv = pEntityData->GetFirstSubKey(); kv; kv = kv->GetNextKey())
+					FOR_EACH_SUBKEY(pEntityData, kv)
 					{
 						if (Q_stricmp(kv->GetName(), "id") == 0)
 							// Skip hammerid
@@ -590,6 +571,7 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 					pSpawnMapData[nEntities].m_pMapData = "";
 					pSpawnMapData[nEntities].m_iMapDataLength = 0;
 					nEntities++;
+					continue;
 				}
 			}
 			else
@@ -601,7 +583,6 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 
 	SpawnHierarchicalList(nEntities, pSpawnList, bActivateEntities);
 
-	//pMapOverride->deleteThis();
 	pMapAdd->deleteThis();
 
 	delete [] pSpawnMapData;
@@ -674,29 +655,6 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 	if (!entData.ExtractValue("classname", className))
 	{
 		Error( "classname missing from entity!\n" );
-	}
-
-	// Allow to override map entities >~<
-	// Doesn't work atm, figure out why
-	if (shouldOverride)
-	{
-		Assert(entData.SetValue("classname", className)); //if the function fails it will trigger an assert
-		for (int i = 0; i < g_mapOverrideInfo.m_entityData.Count(); i++)
-		{
-			if (!g_mapOverrideInfo.m_entityData[i]) continue;
-			KeyValues* pEntityData = g_mapOverrideInfo.m_entityData[i];
-			// Overwrite the keyvalues with our custom one :3
-			if (Q_stricmp(pEntityData->GetName(), "id") == 0)
-				// Skip hammerid
-				continue;
-			if (Q_stricmp(pEntityData->GetName(), "classname") == 0)
-				// Skip classname
-				continue;
-			if (Q_stricmp(pEntityData->GetName(), "targetname") == 0)
-				// Skip targetname
-				continue;
-			entData.SetValue(pEntityData->GetName(), const_cast<char*>(pEntityData->GetString()));
-		}
 	}
 
 	pEntity = NULL;
