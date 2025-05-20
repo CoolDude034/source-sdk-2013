@@ -42,6 +42,7 @@ public:
 	const char *CurrentBufferPosition( void );
 };
 
+
 const char *MapEntity_ParseToken( const char *data, char *newToken );
 const char *MapEntity_SkipToNextEntity( const char *pMapData, char *pWorkBuffer );
 bool MapEntity_ExtractValue( const char *pEntData, const char *keyName, char Value[MAPKEY_MAXLENGTH] );
