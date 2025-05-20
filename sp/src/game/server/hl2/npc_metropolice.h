@@ -54,8 +54,6 @@ public:
 	void Spawn( void );
 	void Precache( void );
 
-	void DoLevelSpecific( void );
-
 	Class_T		Classify( void );
 	Disposition_t IRelationType(CBaseEntity *pTarget);
 	float		MaxYawSpeed( void );
@@ -528,7 +526,6 @@ private:
 
 	// Is elite?
 	bool			m_bIsElite;
-	bool			m_bIsStationary;
 
 	// Outputs
 	COutputEvent	m_OnStunnedPlayer;
