@@ -124,6 +124,9 @@ ConVar	metropolice_chase_use_follow( "metropolice_chase_use_follow", "0" );
 ConVar  metropolice_move_and_melee("metropolice_move_and_melee", "1" );
 ConVar  metropolice_charge("metropolice_charge", "1" );
 
+ConVar metropolice_unique_map_behaviors("metropolice_unique_map_behaviors", "1");
+ConVar metropolice_c17_elite_chance("metropolice_c17_elite_chance", "0.45");
+
 #ifdef MAPBASE
 ConVar	metropolice_new_component_behavior("metropolice_new_component_behavior", "1");
 #endif
@@ -667,6 +670,21 @@ void CNPC_MetroPolice::Precache( void )
 	BaseClass::Precache();
 }
 
+static bool IsC17Chapters()
+{
+	if (gpGlobals->mapname == MAKE_STRING("d3_c17_04"))
+		return true;
+	if (gpGlobals->mapname == MAKE_STRING("d3_c17_05"))
+		return true;
+	if (gpGlobals->mapname == MAKE_STRING("d3_c17_06a"))
+		return true;
+	if (gpGlobals->mapname == MAKE_STRING("d3_c17_06b"))
+		return true;
+	if (gpGlobals->mapname == MAKE_STRING("d3_c17_07"))
+		return true;
+	return false;
+}
+
 
 //-----------------------------------------------------------------------------
 // Create components
@@ -682,6 +700,87 @@ bool CNPC_MetroPolice::CreateComponents()
 	return true;
 }
 
+void CNPC_MetroPolice::DoLevelSpecific( void )
+{
+	if (metropolice_unique_map_behaviors.GetBool())
+	{
+		if (gpGlobals->mapname == MAKE_STRING("d1_canals_01"))
+		{
+			if (NameMatches("arrest_police_1") || NameMatches("arrest_police_2"))
+			{
+				m_spawnEquipment = MAKE_STRING("weapon_stunstick");
+			}
+			if (NameMatches("beat_cop1"))
+			{
+				AddSpawnFlags(SF_METROPOLICE_ARREST_ENEMY);
+			}
+		}
+		else if (gpGlobals->mapname == MAKE_STRING("d1_canals_07"))
+		{
+			// Elite Reinforcements
+			if (NameMatches("underground_npc_mc_sloperappel*") || NameMatches("cop_room7_reinforcement*") || NameMatches("spillway_cop*") || NameMatches("cop_room4_assault*") || NameMatches("cop_room3*"))
+			{
+				m_bIsElite = true;
+			}
+			if (NameMatches("underground_npc_mc_lambdarappel*") || NameMatches("cop_apc_car_shoot"))
+			{
+				m_bIsElite = true;
+			}
+		}
+		else if (gpGlobals->mapname == MAKE_STRING("d1_canals_08") || gpGlobals->mapname == MAKE_STRING("d1_canals_09") || gpGlobals->mapname == MAKE_STRING("d1_canals_10") || gpGlobals->mapname == MAKE_STRING("d1_canals_11") || gpGlobals->mapname == MAKE_STRING("d1_canals_12") || gpGlobals->mapname == MAKE_STRING("d1_canals_13"))
+		{
+			m_bIsElite = true;
+		}
+		else if (gpGlobals->mapname == MAKE_STRING("d3_c17_04"))
+		{
+			if (!NameMatches("underground_npc_mc_lambdarappel*"))
+			{
+				m_bIsElite = true;
+			}
+		}
+		else if (IsC17Chapters())
+		{
+			float eliteChance = metropolice_c17_elite_chance.GetFloat();
+			if (gpGlobals->mapname == MAKE_STRING("d3_c17_05"))
+			{
+				if (NameMatches("scouting_cop*") || NameMatches("gaterush_cop*") || NameMatches("rubble_cop*") || NameMatches("garrison_cop_1"))
+				{
+					eliteChance = 0.0f;
+				}
+				else if (NameMatches("rooftop_cop*"))
+				{
+					AddSpawnFlags(SF_METROPOLICE_MID_RANGE_ATTACK);
+					eliteChance = 1.0f;
+				}
+				else if (NameMatches("garrison_2nd_floor_cop_5"))
+				{
+					eliteChance = 0.035f;
+				}
+				else if (NameMatches("garrison_2nd_floor_cop_4") || NameMatches("garrison_2nd_floor_cop_3"))
+				{
+					eliteChance = 0.0f;
+				}
+				if (NameMatches("garrison_3nd_floor_cop_4"))
+				{
+					AddSpawnFlags(SF_METROPOLICE_SIMPLE_VERSION);
+					CapabilitiesRemove(bits_CAP_MOVE_GROUND);
+					m_spawnEquipment = MAKE_STRING("weapon_pistol");
+					m_fWeaponDrawn = true;
+					eliteChance = 0.0f;
+				}
+			}
+			else if (gpGlobals->mapname == MAKE_STRING("d3_c17_06a"))
+			{
+				eliteChance = 1.0f;
+			}
+			if (random->RandomFloat() < eliteChance)
+			{
+				m_bIsElite = true;
+			}
+		}
+	}
+}
+
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -690,6 +789,7 @@ bool CNPC_MetroPolice::CreateComponents()
 //-----------------------------------------------------------------------------
 void CNPC_MetroPolice::Spawn( void )
 {
+	DoLevelSpecific();
 	if (IsElite())
 	{
 		SetModelName(MAKE_STRING("models/elite_police.mdl"));
