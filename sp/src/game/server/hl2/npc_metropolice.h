@@ -528,6 +528,7 @@ private:
 
 	// Is elite?
 	bool			m_bIsElite;
+	bool			m_bIsStationary;
 
 	// Outputs
 	COutputEvent	m_OnStunnedPlayer;
