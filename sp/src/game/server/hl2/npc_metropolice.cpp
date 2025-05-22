@@ -604,6 +604,8 @@ void CNPC_MetroPolice::PrescheduleThink( void )
 	}
 }
 
+ConVar metropolice_police_behavior_facing_target("metropolice_police_behavior_facing_target", "0");
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : &move - 
@@ -617,9 +619,8 @@ bool CNPC_MetroPolice::OverrideMoveFacing( const AILocalMoveGoal_t &move, float 
 		return BaseClass::OverrideMoveFacing( move, flInterval );
   	
 	// ROBIN: Disabled at request of mapmakers for now
-	/*
   	// If we're moving during a police sequence, always face our target
-	if ( m_PolicingBehavior.IsEnabled() )
+	if ( m_PolicingBehavior.IsEnabled() && metropolice_police_behavior_facing_target.GetBool() )
   	{	
 		CBaseEntity *pTarget = m_PolicingBehavior.GetGoalTarget();
 
@@ -628,7 +629,6 @@ bool CNPC_MetroPolice::OverrideMoveFacing( const AILocalMoveGoal_t &move, float 
 			AddFacingTarget( pTarget, pTarget->WorldSpaceCenter(), 1.0f, 0.2f );
 		}
 	}
-	*/
 
 	return BaseClass::OverrideMoveFacing( move, flInterval );
 }
