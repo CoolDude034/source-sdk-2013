@@ -42,7 +42,10 @@ public:
 	const char *CurrentBufferPosition( void );
 };
 
-
+// Added by me
+inline bool MapEntity_ShouldOverride();
+void MapEntity_LoadOverrideValues();
+bool MapEntity_OverrideMapData(const char* pMapData, CBaseEntity* pEnt);
 const char *MapEntity_ParseToken( const char *data, char *newToken );
 const char *MapEntity_SkipToNextEntity( const char *pMapData, char *pWorkBuffer );
 bool MapEntity_ExtractValue( const char *pEntData, const char *keyName, char Value[MAPKEY_MAXLENGTH] );
