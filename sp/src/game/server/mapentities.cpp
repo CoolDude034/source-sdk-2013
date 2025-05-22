@@ -382,9 +382,6 @@ void MapEntity_LoadOverrideValues()
 	}
 }
 
-ConVar npc_metropolice_early_canal_tweaks("npc_metropolice_early_canal_tweaks", "0");
-ConVar sv_patch_prop_vehicle_jeep("sv_patch_prop_vehicle_jeep", "0");
-
 //-----------------------------------------------------------------------------
 // Purpose: Only called on BSP load. Overrides existing entity using Hammer ID trough MapAdd files.
 // Input  : pMapData - Pointer to the entity data block to parse.
@@ -727,6 +724,10 @@ void MapEntity_PrecacheEntity( const char *pEntData, int &nStringSize )
 	}
 }
 
+ConVar npc_metropolice_early_canal_tweaks("npc_metropolice_early_canal_tweaks", "0");
+ConVar sv_patch_prop_vehicle_jeep("sv_patch_prop_vehicle_jeep", "0");
+ConVar sv_global_map_tweaks("sv_global_map_tweaks", "0");
+
 //-----------------------------------------------------------------------------
 // Purpose: Takes a block of character data as the input
 // Input  : pEntity - Receives the newly constructed entity, NULL on failure.
@@ -745,7 +746,7 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 
 	if (FStrEq(className, "prop_vehicle_jeep") && sv_patch_prop_vehicle_jeep.GetBool())
 	{
-		entData.SetValue("classname", "prop_vehicle_jeep_old");
+		entData.SetValue(className, "prop_vehicle_jeep_old");
 	}
 
 	pEntity = NULL;
@@ -769,6 +770,73 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 			{
 				ConColorMsg(Color(0, 242, 255, 255), "Modified data of %s\n", pEntity->GetClassname());
 			}
+			if (sv_global_map_tweaks.GetBool())
+			{
+				// Patch combine models to coast specific one in coast levels
+				if (V_strnicmp(gpGlobals->mapname.ToCStr(), "d2_coast_", strlen("d2_coast_")) == 0)
+				{
+					char modelName[MAPKEY_MAXLENGTH];
+					if (entData.ExtractValue("model", modelName) && FStrEq(modelName, "models/combine_soldier.mdl"))
+					{
+						if (FStrEq(pEntity->GetClassname(), "npc_combine_s") || FStrEq(pEntity->GetClassname(), "prop_ragdoll"))
+						{
+							pEntity->KeyValue("model", "models/combine_soldier_specialist.mdl");
+						}
+					}
+
+					if (FStrEq(gpGlobals->mapname.ToCStr(), "d2_coast_07"))
+					{
+						if (FStrEq(pEntity->GetClassname(), "npc_combine_s"))
+						{
+							if (pEntity->NameMatches("halt_guy"))
+							{
+								pEntity->KeyValue("additionalequipment", "weapon_pistol");
+							}
+						}
+					}
+
+					if (FStrEq(gpGlobals->mapname.ToCStr(), "d2_coast_09"))
+					{
+						if (FStrEq(pEntity->GetClassname(), "npc_combine_s"))
+						{
+							bool shouldUseStealthDetection = false;
+							if (pEntity->NameMatches("tower_guy") 
+							|| pEntity->NameMatches("tower_guy_2") 
+							|| pEntity->NameMatches("combine_s_internal") 
+							|| pEntity->NameMatches("combine_s_house"))
+							{
+								shouldUseStealthDetection = true;
+							}
+							if (shouldUseStealthDetection)
+							{
+								pEntity->KeyValue("ignoreunseenenemies", "1");
+								pEntity->KeyValue("vscripts", "npcs/stealth_behaviors");
+							}
+						}
+					}
+				}
+				// Patch combine ragdolls to prison specific one in prison levels
+				if (V_strnicmp(gpGlobals->mapname.ToCStr(), "d2_prison_", strlen("d2_prison_")) == 0)
+				{
+					char modelName[MAPKEY_MAXLENGTH];
+					if (entData.ExtractValue("model", modelName) && FStrEq(modelName, "models/combine_soldier.mdl"))
+					{
+						if (FStrEq(pEntity->GetClassname(), "prop_ragdoll"))
+						{
+							pEntity->KeyValue("model", "models/combine_soldier_prisonguard.mdl");
+						}
+					}
+				}
+
+				if (V_strnicmp(gpGlobals->mapname.ToCStr(), "d3_c17_", strlen("d3_c17_")) == 0)
+				{
+					char weaponName[MAPKEY_MAXLENGTH];
+					if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+					{
+						pEntity->KeyValue("IsElite", "1");
+					}
+				}
+			}
 			if (npc_metropolice_early_canal_tweaks.GetBool())
 			{
 				if (FStrEq(pEntity->GetClassname(), "npc_metropolice") && FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_01"))
@@ -780,7 +848,7 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 					else if (pEntity->NameMatches("beat_cop1"))
 					{
 						pEntity->KeyValue("additionalequipment", "weapon_pistol");
-						pEntity->KeyValue("spawnflags", "2228224");
+						pEntity->KeyValue("spawnflags", "2230272"); // 131072 + 2097152 + 2048
 					}
 				}
 			}
