@@ -997,6 +997,7 @@ bool CServerGameDLL::LevelInit( const char *pMapName, char const *pMapEntities, 
 
 	// IGameSystem::LevelInitPreEntityAllSystems() is called when the world is precached
 	// That happens either in LoadGameState() or in MapEntity_ParseAllEntities()
+	MapEntity_LoadOverrideValues();
 	if ( loadGame )
 	{
 		if ( pOldLevel )
