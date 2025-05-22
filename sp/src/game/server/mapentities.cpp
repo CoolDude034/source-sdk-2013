@@ -29,6 +29,9 @@ struct HierarchicalSpawnMapData_t
 	int			m_iMapDataLength;
 };
 
+bool g_bShouldOverrideMapEntities;
+KeyValues* g_pMapOverridesKV;
+
 static CStringRegistry *g_pClassnameSpawnPriority = NULL;
 extern edict_t *g_pForceAttachEdict;
 
@@ -350,6 +353,91 @@ bool IsFileLoaded(KeyValues* pKeyValueObject, const char* fileName)
 	return didLoad;
 }
 
+bool MapEntity_ShouldOverride()
+{
+	return g_bShouldOverrideMapEntities;
+}
+
+// Again, thanks to grizzledev for the base code
+void MapEntity_LoadOverrideValues()
+{
+	g_bShouldOverrideMapEntities = false;
+	if (g_pMapOverridesKV)
+	{
+		g_pMapOverridesKV->deleteThis();
+		g_pMapOverridesKV = NULL;
+	}
+
+	// Load map override data
+	g_pMapOverridesKV = new KeyValues("MapOverride");
+	char fileName[MAX_PATH];
+	sprintf_s(fileName, MAX_PATH, "mapadd/%s.txt", gpGlobals->mapname.ToCStr());
+	if (g_pMapOverridesKV->LoadFromFile(filesystem, fileName, "MOD"))
+	{
+		g_bShouldOverrideMapEntities = true;
+	}
+	else
+	{
+		Warning("Something went wrong while loading %s\n", fileName);
+	}
+}
+
+ConVar npc_metropolice_early_canal_tweaks("npc_metropolice_early_canal_tweaks", "0");
+ConVar sv_patch_prop_vehicle_jeep("sv_patch_prop_vehicle_jeep", "0");
+
+//-----------------------------------------------------------------------------
+// Purpose: Only called on BSP load. Overrides existing entity using Hammer ID trough MapAdd files.
+// Input  : pMapData - Pointer to the entity data block to parse.
+//-----------------------------------------------------------------------------
+bool MapEntity_OverrideMapData(const char* pMapData, CBaseEntity* pEnt)
+{
+	if (MapEntity_ShouldOverride())
+	{
+		CEntityMapData entData((char*)pMapData);
+
+		char szHammerId[MAPKEY_MAXLENGTH];
+		char szOrigin[MAPKEY_MAXLENGTH];
+
+		if (entData.ExtractValue("hammerid", szHammerId) && g_pMapOverridesKV->FindKey(szHammerId))
+		{
+			KeyValues* hammerIdKv = g_pMapOverridesKV->FindKey(szHammerId);
+
+			FOR_EACH_SUBKEY(hammerIdKv, pEntityData)
+			{
+				const char* pKey = pEntityData->GetName();
+				if (pKey && *pKey)
+				{
+					const char* pValue = pEntityData->GetString();
+					if (pValue && *pValue)
+					{
+						pEnt->KeyValue(pKey, pValue);
+					}
+				}
+			}
+			return true;
+		}
+		else if (entData.ExtractValue("origin", szOrigin) && g_pMapOverridesKV->FindKey(szOrigin))
+		{
+			KeyValues* originKv = g_pMapOverridesKV->FindKey(szOrigin);
+
+			FOR_EACH_SUBKEY(originKv, pEntityData)
+			{
+				const char* pKey = pEntityData->GetName();
+				if (pKey && *pKey)
+				{
+					const char* pValue = pEntityData->GetString();
+					if (pValue && *pValue)
+					{
+						pEnt->KeyValue(pKey, pValue);
+					}
+				}
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: Only called on BSP load. Parses and spawns all the entities in the BSP.
 // Input  : pMapData - Pointer to the entity data block to parse.
@@ -568,6 +656,8 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 					pSpawnMapData[nEntities].m_pMapData = "";
 					pSpawnMapData[nEntities].m_iMapDataLength = 0;
 					nEntities++;
+
+					DevMsg("MapAdd: Created entity %s\n", pEntity->GetClassname());
 				}
 			}
 			else
@@ -653,6 +743,11 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 		Error( "classname missing from entity!\n" );
 	}
 
+	if (FStrEq(className, "prop_vehicle_jeep") && sv_patch_prop_vehicle_jeep.GetBool())
+	{
+		entData.SetValue("classname", "prop_vehicle_jeep_old");
+	}
+
 	pEntity = NULL;
 	if ( !pFilter || pFilter->ShouldCreateEntity( className ) )
 	{
@@ -670,6 +765,25 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 		if (pEntity != NULL)
 		{
 			pEntity->ParseMapData(&entData);
+			if (MapEntity_OverrideMapData(pEntData, pEntity))
+			{
+				ConColorMsg(Color(0, 242, 255, 255), "Modified data of %s\n", pEntity->GetClassname());
+			}
+			if (npc_metropolice_early_canal_tweaks.GetBool())
+			{
+				if (FStrEq(pEntity->GetClassname(), "npc_metropolice") && FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_01"))
+				{
+					if (pEntity->NameMatches("arrest_police_1") || pEntity->NameMatches("arrest_police_2"))
+					{
+						pEntity->KeyValue("additionalequipment", "weapon_stunstick");
+					}
+					else if (pEntity->NameMatches("beat_cop1"))
+					{
+						pEntity->KeyValue("additionalequipment", "weapon_pistol");
+						pEntity->KeyValue("spawnflags", "2228224");
+					}
+				}
+			}
 		}
 		else
 		{
