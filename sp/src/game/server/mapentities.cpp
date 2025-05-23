@@ -728,6 +728,13 @@ ConVar npc_metropolice_early_canal_tweaks("npc_metropolice_early_canal_tweaks", 
 ConVar sv_patch_prop_vehicle_jeep("sv_patch_prop_vehicle_jeep", "0");
 ConVar sv_global_map_tweaks("sv_global_map_tweaks", "0");
 
+const char* MapEntity_PatchPropVehicleJeep(char* className)
+{
+	if (sv_patch_prop_vehicle_jeep.GetBool() && FStrEq(className, "prop_vehicle_jeep"))
+		return "prop_vehicle_jeep_old";
+	return className;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: Takes a block of character data as the input
 // Input  : pEntity - Receives the newly constructed entity, NULL on failure.
@@ -744,21 +751,16 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 		Error( "classname missing from entity!\n" );
 	}
 
-	if (FStrEq(className, "prop_vehicle_jeep") && sv_patch_prop_vehicle_jeep.GetBool())
-	{
-		entData.SetValue(className, "prop_vehicle_jeep_old");
-	}
-
 	pEntity = NULL;
-	if ( !pFilter || pFilter->ShouldCreateEntity( className ) )
+	if ( !pFilter || pFilter->ShouldCreateEntity( MapEntity_PatchPropVehicleJeep(className) ) )
 	{
 		//
 		// Construct via the LINK_ENTITY_TO_CLASS factory.
 		//
 		if ( pFilter )
-			pEntity = pFilter->CreateNextEntity( className );
+			pEntity = pFilter->CreateNextEntity( MapEntity_PatchPropVehicleJeep(className) );
 		else
-			pEntity = CreateEntityByName( className );
+			pEntity = CreateEntityByName( MapEntity_PatchPropVehicleJeep(className) );
 
 		//
 		// Set up keyvalues.
@@ -834,6 +836,20 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 					if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
 					{
 						pEntity->KeyValue("IsElite", "1");
+					}
+				}
+
+				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_trainstation_02"))
+				{
+					char keyName[MAPKEY_MAXLENGTH];
+					if (FStrEq(pEntity->GetClassname(), "func_door") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "-4122.5 -2254.5 139.99"))
+					{
+						pEntity->KeyValue("vscripts", "world/ration_dispenser");
+					}
+
+					if (FStrEq(pEntity->GetClassname(), "npc_metropolice") || FStrEq(pEntity->GetClassname(), "npc_citizen"))
+					{
+						pEntity->KeyValue("vscripts", "npcs/ai/events/react_to_attack");
 					}
 				}
 			}
