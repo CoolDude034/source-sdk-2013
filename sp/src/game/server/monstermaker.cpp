@@ -595,8 +595,6 @@ END_DATADESC()
 CNPCMakerDynamic::CNPCMakerDynamic(void)
 {
 	g_spawnFreq = dyn_spawner_spawn_freq.GetFloat();
-
-	m_iszVScripts = MAKE_STRING("npcs/ai/dynamic_spawner");
 }
 
 //-----------------------------------------------------------------------------
