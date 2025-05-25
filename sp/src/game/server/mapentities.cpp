@@ -727,6 +727,9 @@ void MapEntity_PrecacheEntity( const char *pEntData, int &nStringSize )
 ConVar npc_metropolice_early_canal_tweaks("npc_metropolice_early_canal_tweaks", "0");
 ConVar sv_patch_prop_vehicle_jeep("sv_patch_prop_vehicle_jeep", "0");
 ConVar sv_global_map_tweaks("sv_global_map_tweaks", "0");
+ConVar sv_d1_canals_08_stealth_map_tweak("sv_d1_canals_08_stealth_map_tweak", "0");
+ConVar sv_d1_canals_08_elite_cops_map_tweak("sv_d1_canals_08_elite_cops_map_tweak", "0");
+ConVar sv_d1_canals_08_helicopter_enabled("sv_d1_canals_08_helicopter_enabled", "1");
 
 const char* MapEntity_PatchPropVehicleJeep(char* className)
 {
@@ -865,6 +868,57 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 					{
 						pEntity->KeyValue("additionalequipment", "weapon_pistol");
 						pEntity->KeyValue("spawnflags", "2230272"); // 131072 + 2097152 + 2048
+					}
+				}
+
+				if (FStrEq(pEntity->GetClassname(), "npc_metropolice") && FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_07"))
+				{
+					if (pEntity->NameMatches("cop_room4_assault_*") 
+						|| pEntity->NameMatches("cop_room4_turret")
+						|| pEntity->NameMatches("cop_room7_reinforcement_*")
+						|| pEntity->NameMatches("underground_npc_mc_sloperappel*")
+						|| pEntity->NameMatches("cop_apc_car_shoot")
+						|| pEntity->NameMatches("underground_npc_mc_lambdarappel*")
+						|| pEntity->NameMatches("underground_npc_mc_lambdarappel*"))
+					{
+						pEntity->KeyValue("IsElite", "1");
+					}
+				}
+
+				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_08"))
+				{
+					bool enableStealthBehaviors = sv_d1_canals_08_stealth_map_tweak.GetBool();
+					if (FStrEq(pEntity->GetClassname(), "npc_metropolice"))
+					{
+						if (sv_d1_canals_08_elite_cops_map_tweak.GetBool())
+						{
+							char weaponName[MAPKEY_MAXLENGTH];
+							if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+							{
+								pEntity->KeyValue("IsElite", "1");
+							}
+						}
+
+						if (enableStealthBehaviors)
+						{
+							pEntity->KeyValue("ignoreunseenenemies", "1");
+							pEntity->KeyValue("vscripts", "npcs/stealth_behaviors");
+						}
+					}
+
+					if (enableStealthBehaviors || !sv_d1_canals_08_helicopter_enabled.GetBool())
+					{
+						char keyName[MAPKEY_MAXLENGTH];
+						// Heli trigger
+						if (FStrEq(pEntity->GetClassname(), "trigger_once") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "-140 -1388 -528"))
+						{
+							pEntity->KeyValue("StartDisabled", "1");
+						}
+						// Alarm trigger
+						if (FStrEq(pEntity->GetClassname(), "trigger_once") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "2528 -4112 -464"))
+						{
+							pEntity->KeyValue("StartDisabled", "1");
+						}
 					}
 				}
 			}
