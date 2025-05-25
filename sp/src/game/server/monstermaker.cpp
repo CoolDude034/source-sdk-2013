@@ -23,6 +23,8 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+#define MAX_DESTINATION_ENTS	100 // this is ontop of the file, so that both template_maker and dynamic spawners can use this
+
 static void DispatchActivate( CBaseEntity *pEntity )
 {
 	bool bAsyncAnims = mdlcache->SetAsyncLoad( MDLCACHE_ANIMBLOCK, false );
@@ -39,6 +41,8 @@ BEGIN_DATADESC( CNPCSpawnDestination )
 	DEFINE_KEYFIELD( m_ReuseDelay, FIELD_FLOAT, "ReuseDelay" ),
 	DEFINE_KEYFIELD( m_RenameNPC,FIELD_STRING, "RenameNPC" ),
 	DEFINE_FIELD( m_TimeNextAvailable, FIELD_TIME ),
+
+	DEFINE_KEYFIELD(m_bIsRappelSpawn, FIELD_BOOLEAN, "IsRappelSpawn"),
 
 	DEFINE_OUTPUT( m_OnSpawnNPC,	"OnSpawnNPC" ),
 END_DATADESC()
@@ -84,7 +88,6 @@ BEGIN_DATADESC( CBaseNPCMaker )
 	DEFINE_KEYFIELD( m_nMaxLiveChildren,		FIELD_INTEGER,	"MaxLiveChildren" ),
 	DEFINE_KEYFIELD( m_flSpawnFrequency,		FIELD_FLOAT,	"SpawnFrequency" ),
 	DEFINE_KEYFIELD( m_bDisabled,			FIELD_BOOLEAN,	"StartDisabled" ),
-	DEFINE_KEYFIELD( m_bIsDynamicSpawn,		FIELD_BOOLEAN, "DynamicSpawn"),
 
 	DEFINE_FIELD(	m_nLiveChildren,		FIELD_INTEGER ),
 
@@ -172,7 +175,7 @@ bool CBaseNPCMaker::CanMakeNPC( bool bIgnoreSolidEntities )
 	if( ai_inhibit_spawners.GetBool() )
 		return false;
 
-	if ( m_nMaxLiveChildren > 0 && m_nLiveChildren >= m_nMaxLiveChildren )
+	if (m_nMaxLiveChildren > 0 && m_nLiveChildren >= m_nMaxLiveChildren)
 	{// not allowed to make a new one yet. Too many live ones out right now.
 		return false;
 	}
@@ -226,7 +229,7 @@ bool CBaseNPCMaker::CanMakeNPC( bool bIgnoreSolidEntities )
 	}
 
 	// Do we need to check to see if the player's looking?
-	if ( HasSpawnFlags( SF_NPCMAKER_HIDEFROMPLAYER ) || m_bIsDynamicSpawn )
+	if ( HasSpawnFlags( SF_NPCMAKER_HIDEFROMPLAYER ) )
 	{
 		for ( int i = 1; i <= gpGlobals->maxClients; i++ )
 		{
@@ -379,8 +382,6 @@ DEFINE_KEYFIELD(m_SquadName, FIELD_STRING, "NPCSquadName"),
 DEFINE_KEYFIELD(m_spawnEquipment, FIELD_STRING, "additionalequipment"),
 DEFINE_KEYFIELD(m_strHintGroup, FIELD_STRING, "NPCHintGroup"),
 DEFINE_KEYFIELD(m_RelationshipString, FIELD_STRING, "Relationship"),
-DEFINE_KEYFIELD(m_ChildModelName, FIELD_MODELNAME, "ModelOverride"),
-DEFINE_KEYFIELD(m_bWaitingOnRappel, FIELD_BOOLEAN, "WaitingForRappel"),
 
 END_DATADESC()
 
@@ -389,25 +390,9 @@ END_DATADESC()
 // Constructor
 //-----------------------------------------------------------------------------
 
-ConVar dyn_spawner_weapon_slot1("dyn_spawner_weapon_slot1", "weapon_smg1", FCVAR_HIDDEN);
-ConVar dyn_spawner_weapon_slot2("dyn_spawner_weapon_slot2", "weapon_mp5", FCVAR_HIDDEN);
-ConVar dyn_spawner_weapon_slot3("dyn_spawner_weapon_slot3", "weapon_shotgun", FCVAR_HIDDEN);
-ConVar dyn_spawner_weapon_slot4("dyn_spawner_weapon_slot4", "weapon_ar2", FCVAR_HIDDEN);
-
-ConVar dyn_spawner_weapon_slot1_chance("dyn_spawner_weapon_slot1_chance", "0.35", FCVAR_HIDDEN);
-ConVar dyn_spawner_weapon_slot2_chance("dyn_spawner_weapon_slot2_chance", "0.35", FCVAR_HIDDEN);
-ConVar dyn_spawner_weapon_slot3_chance("dyn_spawner_weapon_slot3_chance", "0.25", FCVAR_HIDDEN);
-ConVar dyn_spawner_weapon_slot4_chance("dyn_spawner_weapon_slot4_chance", "0.02", FCVAR_HIDDEN);
-
 CNPCMaker::CNPCMaker( void )
 {
 	m_spawnEquipment = NULL_STRING;
-
-	if (m_bIsDynamicSpawn)
-	{
-		m_iszNPCClassname = MAKE_STRING("npc_combine_s");
-		m_SquadName = MAKE_STRING("squad_reinforcements");
-	}
 }
 
 
@@ -433,9 +418,6 @@ void CNPCMaker::Precache( void )
 //-----------------------------------------------------------------------------
 // Purpose: Creates the NPC.
 //-----------------------------------------------------------------------------
-
-ConVar dyn_spawner_soldier_model("dyn_spawner_soldier_model", "models/combine_soldier.mdl", FCVAR_HIDDEN);
-ConVar dyn_spawner_grenade_amount("dyn_spawner_grenade_amount", "5", FCVAR_HIDDEN);
 
 void CNPCMaker::MakeNPC( void )
 {
@@ -467,7 +449,7 @@ void CNPCMaker::MakeNPC( void )
 
 	pent->AddSpawnFlags( SF_NPC_FALL_TO_GROUND );
 
-	if ( m_spawnflags & SF_NPCMAKER_FADE || m_bIsDynamicSpawn )
+	if ( m_spawnflags & SF_NPCMAKER_FADE )
 	{
 		pent->AddSpawnFlags( SF_NPC_FADE_CORPSE );
 	}
@@ -475,40 +457,6 @@ void CNPCMaker::MakeNPC( void )
 	pent->m_spawnEquipment	= m_spawnEquipment;
 	pent->SetSquadName( m_SquadName );
 	pent->SetHintGroup( m_strHintGroup );
-
-	if (m_bIsDynamicSpawn)
-	{
-		pent->SetModelName(MAKE_STRING(dyn_spawner_soldier_model.GetString()));
-		pent->KeyValue("NumGrenades", dyn_spawner_grenade_amount.GetString());
-		pent->KeyValue("tacticalvariant", "2");
-		if (random->RandomFloat() < dyn_spawner_weapon_slot1_chance.GetFloat())
-		{
-			pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot1.GetString());
-		}
-		else if (random->RandomFloat() < dyn_spawner_weapon_slot2_chance.GetFloat())
-		{
-			pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot2.GetString());
-		}
-		else if (random->RandomFloat() < dyn_spawner_weapon_slot3_chance.GetFloat())
-		{
-			pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot3.GetString());
-		}
-		else if (random->RandomFloat() < dyn_spawner_weapon_slot4_chance.GetFloat())
-		{
-			pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot4.GetString());
-		}
-		if (m_bWaitingOnRappel)
-		{
-			pent->KeyValue("waitingtorappel", "1");
-		}
-	}
-	else
-	{
-		if (m_ChildModelName != NULL_STRING)
-		{
-			pent->SetModelName(m_ChildModelName);
-		}
-	}
 
 	ChildPreSpawn( pent );
 
@@ -526,7 +474,7 @@ void CNPCMaker::MakeNPC( void )
 
 	m_nLiveChildren++;// count this NPC
 
-	if (!(m_spawnflags & SF_NPCMAKER_INF_CHILD) && !m_bIsDynamicSpawn)
+	if (!(m_spawnflags & SF_NPCMAKER_INF_CHILD))
 	{
 		m_nMaxNumNPCs--;
 
@@ -537,20 +485,6 @@ void CNPCMaker::MakeNPC( void )
 			// Disable this forever.  Don't kill it because it still gets death notices
 			SetThink( NULL );
 			SetUse( NULL );
-		}
-	}
-
-	if (m_bIsDynamicSpawn)
-	{
-		CBasePlayer* pPlayer = UTIL_GetLocalPlayerOrListenServerHost();
-		if (pPlayer)
-		{
-			pent->UpdateEnemyMemory(NULL, pPlayer->GetAbsOrigin());
-		}
-
-		if (m_bWaitingOnRappel)
-		{
-			pent->BeginRappel();
 		}
 	}
 }
@@ -623,6 +557,397 @@ void CBaseNPCMaker::DeathNotice( CBaseEntity *pVictim )
 	}
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: Creates new NPCs with properties configurable trough CFG scripts. The maker just acts as a manager
+//			and properties are globally shared.
+//-----------------------------------------------------------------------------
+
+ConVar dyn_spawner_weapon_slot1("dyn_spawner_weapon_slot1", "weapon_smg1", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot2("dyn_spawner_weapon_slot2", "weapon_mp5", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot3("dyn_spawner_weapon_slot3", "weapon_shotgun", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot4("dyn_spawner_weapon_slot4", "weapon_ar2", FCVAR_HIDDEN);
+
+ConVar dyn_spawner_weapon_slot1_chance("dyn_spawner_weapon_slot1_chance", "0.35", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot2_chance("dyn_spawner_weapon_slot2_chance", "0.35", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot3_chance("dyn_spawner_weapon_slot3_chance", "0.25", FCVAR_HIDDEN);
+ConVar dyn_spawner_weapon_slot4_chance("dyn_spawner_weapon_slot4_chance", "0.02", FCVAR_HIDDEN);
+
+ConVar dyn_spawner_spawn_cap("dyn_spawner_spawn_cap", "5", FCVAR_HIDDEN);
+ConVar dyn_spawner_spawn_freq("dyn_spawner_spawn_freq", "1.5", FCVAR_HIDDEN);
+ConVar dyn_spawner_spawn_point_name("dyn_spawner_spawn_point_name", "info_npc_enemy_spawn", FCVAR_HIDDEN);
+ConVar dyn_spawner_spawn_point_visiblity("dyn_spawner_spawn_point_visiblity", "default", FCVAR_HIDDEN);
+ConVar dyn_spawner_spawn_point_distance("dyn_spawner_spawn_point_distance", "default", FCVAR_HIDDEN);
+ConVar dyn_spawner_spawn_distance("dyn_spawner_spawn_distance", "400", FCVAR_HIDDEN);
+
+ConVar dyn_spawner_soldier_model("dyn_spawner_soldier_model", "models/combine_soldier.mdl", FCVAR_HIDDEN);
+ConVar dyn_spawner_grenade_amount("dyn_spawner_grenade_amount", "5", FCVAR_HIDDEN);
+
+int g_numNPCs;
+float g_spawnFreq;
+
+LINK_ENTITY_TO_CLASS(npc_maker_dynamic, CNPCMakerDynamic);
+
+BEGIN_DATADESC(CNPCMakerDynamic)
+DEFINE_KEYFIELD(m_ChildModelName, FIELD_MODELNAME, "ModelOverride"),
+//DEFINE_KEYFIELD(m_bWaitingOnRappel, FIELD_BOOLEAN, "WaitingForRappel"),
+END_DATADESC()
+
+CNPCMakerDynamic::CNPCMakerDynamic(void)
+{
+	g_spawnFreq = dyn_spawner_spawn_freq.GetFloat();
+
+	m_iszVScripts = MAKE_STRING("npcs/ai/dynamic_spawner");
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Precache the target NPC
+// Overriden because we're hard-coding the classname instead
+// but we also need to precache the models used by the spawner
+//-----------------------------------------------------------------------------
+void CNPCMakerDynamic::Precache(void)
+{
+	UTIL_PrecacheOther("npc_combine_s");
+
+	if (m_ChildModelName != NULL_STRING)
+	{
+		PrecacheModel(m_ChildModelName.ToCStr());
+	}
+	else
+	{
+		PrecacheModel(dyn_spawner_soldier_model.GetString());
+	}
+}
+
+void CNPCMakerDynamic::DeathNotice(CBaseEntity* pVictim)
+{
+	// ok, we've gotten the deathnotice from our child, now clear out its owner if we don't want it to fade.
+	g_numNPCs--;
+
+	// If we're here, we're getting erroneous death messages from children we haven't created
+	AssertMsg(g_numNPCs >= 0, "npc_maker_dynamic receiving child death notice but thinks has no children\n");
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Returns whether or not it is OK to make an NPC at this instant.
+//-----------------------------------------------------------------------------
+bool CNPCMakerDynamic::CanMakeNPC(bool bIgnoreSolidEntities)
+{
+	if (ai_inhibit_spawners.GetBool())
+		return false;
+
+	if (dyn_spawner_spawn_cap.GetInt() > 0 && g_numNPCs >= dyn_spawner_spawn_cap.GetInt())
+	{// not allowed to make a new one yet. Too many live ones out right now.
+		return false;
+	}
+
+	if (m_iszIngoreEnt != NULL_STRING)
+	{
+		m_hIgnoreEntity = gEntList.FindEntityByName(NULL, m_iszIngoreEnt);
+	}
+
+	Vector mins = GetAbsOrigin() - Vector(34, 34, 0);
+	Vector maxs = GetAbsOrigin() + Vector(34, 34, 0);
+	maxs.z = GetAbsOrigin().z;
+
+	// If we care about not hitting solid entities, look for 'em
+	if (!bIgnoreSolidEntities)
+	{
+		CBaseEntity* pList[128];
+
+		int count = UTIL_EntitiesInBox(pList, 128, mins, maxs, FL_CLIENT | FL_NPC);
+		if (count)
+		{
+			//Iterate through the list and check the results
+			for (int i = 0; i < count; i++)
+			{
+				//Don't build on top of another entity
+				if (pList[i] == NULL)
+					continue;
+
+				//If one of the entities is solid, then we may not be able to spawn now
+				if ((pList[i]->GetSolidFlags() & FSOLID_NOT_SOLID) == false)
+				{
+					// Since the outer method doesn't work well around striders on account of their huge bounding box.
+					// Find the ground under me and see if a human hull would fit there.
+					trace_t tr;
+					UTIL_TraceHull(GetAbsOrigin() + Vector(0, 0, 2),
+						GetAbsOrigin() - Vector(0, 0, 8192),
+						NAI_Hull::Mins(HULL_HUMAN),
+						NAI_Hull::Maxs(HULL_HUMAN),
+						MASK_NPCSOLID,
+						m_hIgnoreEntity,
+						COLLISION_GROUP_NONE,
+						&tr);
+
+					if (!HumanHullFits(tr.endpos + Vector(0, 0, 1)))
+					{
+						return false;
+					}
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+void CNPCMakerDynamic::MakerThink(void)
+{
+	SetNextThink(gpGlobals->curtime + g_spawnFreq);
+
+	MakeNPC();
+}
+
+void CNPCMakerDynamic::MakeNPC(void)
+{
+	if (!CanMakeNPC(false))
+		return;
+
+	CNPCSpawnDestination* pDestination = NULL;
+	if (!FStrEq(dyn_spawner_spawn_point_name.GetString(), ""))
+	{
+		pDestination = FindSpawnDestination();
+		if (!pDestination)
+		{
+			DevMsg(2, "%s '%s' failed to find a valid spawnpoint in destination group: '%s'\n", GetClassname(), STRING(GetEntityName()), dyn_spawner_spawn_point_name.GetString());
+			return;
+		}
+	}
+	else
+	{
+		DevMsg("No valid spawns we're found\n");
+		return;
+	}
+
+	CAI_BaseNPC* pent = (CAI_BaseNPC*)CreateEntityByName("npc_combine_s");
+
+	if (!pent)
+	{
+		Warning("NULL Ent in NPCMaker!\n");
+		return;
+	}
+
+	// ------------------------------------------------
+	//  Intialize spawned NPC's relationships
+	// ------------------------------------------------
+	pent->SetRelationshipString(m_RelationshipString);
+
+	m_OnSpawnNPC.Set(pent, pent, this);
+
+	pent->SetAbsOrigin(pDestination->GetAbsOrigin());
+
+	// Strip pitch and roll from the spawner's angles. Pass only yaw to the spawned NPC.
+	QAngle angles = pDestination->GetAbsAngles();
+	angles.x = 0.0;
+	angles.z = 0.0;
+	pent->SetAbsAngles(angles);
+
+	pent->AddSpawnFlags(SF_NPC_FALL_TO_GROUND);
+	pent->AddSpawnFlags(SF_NPC_FADE_CORPSE);
+
+	// Randomize weapon pool
+	if (random->RandomFloat() < dyn_spawner_weapon_slot1_chance.GetFloat())
+	{
+		pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot1.GetString());
+	}
+	else if (random->RandomFloat() < dyn_spawner_weapon_slot2_chance.GetFloat())
+	{
+		pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot2.GetString());
+	}
+	else if (random->RandomFloat() < dyn_spawner_weapon_slot3_chance.GetFloat())
+	{
+		pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot3.GetString());
+	}
+	else if (random->RandomFloat() < dyn_spawner_weapon_slot4_chance.GetFloat())
+	{
+		pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot4.GetString());
+	}
+	else
+	{
+		pent->m_spawnEquipment = MAKE_STRING(dyn_spawner_weapon_slot1.GetString());
+	}
+	if (pDestination->IsRappelSpawn())
+	{
+		pent->KeyValue("waitingtorappel", "1");
+	}
+
+	pent->SetSquadName(MAKE_STRING("squad_reinforcements"));
+	if (m_strHintGroup != NULL_STRING)
+	{
+		pent->SetHintGroup(m_strHintGroup);
+	}
+
+	if (m_ChildModelName != NULL_STRING)
+	{
+		pent->SetModelName(m_ChildModelName);
+	}
+	else
+	{
+		pent->SetModelName(MAKE_STRING(dyn_spawner_soldier_model.GetString()));
+	}
+	pent->KeyValue("NumGrenades", dyn_spawner_grenade_amount.GetString());
+	pent->KeyValue("tacticalvariant", "2"); // Pressure the enemy until 25ft i think, this is so they respond quick enough to the scene and then regular AI takes over
+
+	ChildPreSpawn(pent);
+
+	DispatchSpawn(pent);
+	pent->SetOwnerEntity(this);
+	DispatchActivate(pent);
+
+	ChildPostSpawn(pent);
+
+	g_numNPCs++;// count this NPC
+
+	CBasePlayer* pPlayer = UTIL_GetLocalPlayerOrListenServerHost();
+	if (pPlayer)
+	{
+		pent->UpdateEnemyMemory(NULL, pPlayer->GetAbsOrigin());
+	}
+
+	if (pDestination->IsRappelSpawn())
+	{
+		pent->BeginRappel();
+	}
+}
+
+CNPCSpawnDestination* CNPCMakerDynamic::FindSpawnDestination()
+{
+	CNPCSpawnDestination* pDestinations[MAX_DESTINATION_ENTS];
+	CBaseEntity* pEnt = NULL;
+	CBasePlayer* pPlayer = UTIL_GetLocalPlayer();
+	int	count = 0;
+
+	if (!pPlayer)
+	{
+		return NULL;
+	}
+
+	// Collect all the qualifiying destination ents
+	pEnt = gEntList.FindEntityByName(NULL, dyn_spawner_spawn_point_name.GetString());
+
+	if (!pEnt)
+	{
+		DevWarning("Dynamic NPC Spawner (%s) doesn't have any spawn destinations!\n", GetDebugName());
+		return NULL;
+	}
+
+	while (pEnt)
+	{
+		CNPCSpawnDestination* pDestination;
+
+		pDestination = dynamic_cast <CNPCSpawnDestination*>(pEnt);
+
+		if (pDestination && pDestination->IsAvailable())
+		{
+			bool fValid = true;
+			Vector vecTest = pDestination->GetAbsOrigin();
+
+			if (!FStrEq(dyn_spawner_spawn_point_visiblity.GetString(), "disabled"))
+			{
+				// Right now View Cone check is omitted intentionally.
+				Vector vecTopOfHull = NAI_Hull::Maxs(HULL_HUMAN);
+				vecTopOfHull.x = 0;
+				vecTopOfHull.y = 0;
+				bool fVisible = (pPlayer->FVisible(vecTest) || pPlayer->FVisible(vecTest + vecTopOfHull));
+
+				if (FStrEq(dyn_spawner_spawn_point_visiblity.GetString(), "enabled"))
+				{
+					if (!fVisible)
+						fValid = false;
+				}
+				else
+				{
+					if (fVisible)
+					{
+						if (!(pPlayer->GetFlags() & FL_NOTARGET))
+							fValid = false;
+						else
+							DevMsg(2, "Spawner %s spawning even though seen due to notarget\n", STRING(GetEntityName()));
+					}
+				}
+			}
+
+			if (fValid)
+			{
+				pDestinations[count] = pDestination;
+				count++;
+			}
+		}
+
+		pEnt = gEntList.FindEntityByName(pEnt, dyn_spawner_spawn_point_name.GetString());
+	}
+
+	if (count < 1)
+		return NULL;
+
+	// Now find the nearest/farthest based on distance criterion
+	if (FStrEq(dyn_spawner_spawn_point_distance.GetString(), "random"))
+	{
+		// Pretty lame way to pick randomly. Try a few times to find a random
+		// location where a hull can fit. Don't try too many times due to performance
+		// concerns.
+		for (int i = 0; i < 5; i++)
+		{
+			CNPCSpawnDestination* pRandomDest = pDestinations[rand() % count];
+
+			if (HumanHullFits(pRandomDest->GetAbsOrigin()))
+			{
+				return pRandomDest;
+			}
+		}
+
+		return NULL;
+	}
+	else
+	{
+		if (FStrEq(dyn_spawner_spawn_point_distance.GetString(), "nearest"))
+		{
+			float flNearest = FLT_MAX;
+			CNPCSpawnDestination* pNearest = NULL;
+
+			for (int i = 0; i < count; i++)
+			{
+				Vector vecTest = pDestinations[i]->GetAbsOrigin();
+				float flDist = (vecTest - pPlayer->GetAbsOrigin()).Length();
+
+				if (dyn_spawner_spawn_distance.GetFloat() != 0 && dyn_spawner_spawn_distance.GetFloat() > flDist)
+					continue;
+
+				if (flDist < flNearest && HumanHullFits(vecTest))
+				{
+					flNearest = flDist;
+					pNearest = pDestinations[i];
+				}
+			}
+
+			return pNearest;
+		}
+		else
+		{
+			float flFarthest = 0;
+			CNPCSpawnDestination* pFarthest = NULL;
+
+			for (int i = 0; i < count; i++)
+			{
+				Vector vecTest = pDestinations[i]->GetAbsOrigin();
+				float flDist = (vecTest - pPlayer->GetAbsOrigin()).Length();
+
+				if (dyn_spawner_spawn_distance.GetFloat() != 0 && dyn_spawner_spawn_distance.GetFloat() > flDist)
+					continue;
+
+				if (flDist > flFarthest && HumanHullFits(vecTest))
+				{
+					flFarthest = flDist;
+					pFarthest = pDestinations[i];
+				}
+			}
+
+			return pFarthest;
+		}
+	}
+
+	return NULL;
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: Creates new NPCs from a template NPC. The template NPC must be marked
@@ -703,7 +1028,6 @@ void CTemplateNPCMaker::Precache()
 	}
 }
 
-#define MAX_DESTINATION_ENTS	100
 CNPCSpawnDestination *CTemplateNPCMaker::FindSpawnDestination()
 {
 	CNPCSpawnDestination *pDestinations[ MAX_DESTINATION_ENTS ];

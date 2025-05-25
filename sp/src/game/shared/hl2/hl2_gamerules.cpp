@@ -517,7 +517,7 @@ ConVar  alyx_darkness_force( "alyx_darkness_force", "0", FCVAR_CHEAT | FCVAR_REP
 			KeyValues* pLoadoutData = pMapData->FindKey("LoadoutData");
 			if (pLoadoutData)
 			{
-				for (KeyValues* kvSubKey = pLoadoutData->GetFirstSubKey(); kvSubKey != NULL; kvSubKey = kvSubKey->GetNextKey())
+				FOR_EACH_SUBKEY(pLoadoutData, kvSubKey)
 				{
 					pPlayer->GiveNamedItem(kvSubKey->GetName());
 				}

@@ -39,6 +39,9 @@ public:
 	float		m_ReuseDelay;		// How long to be unavailable after being selected
 	string_t	m_RenameNPC;		// If not NULL, rename the NPC that spawns here to this.
 	float		m_TimeNextAvailable;// The time at which this destination will be available again.
+	bool		m_bIsRappelSpawn; // Only used by npc_maker_dynamic to tell that this spawn should start the NPC rappeling down
+
+	bool		IsRappelSpawn() { return m_bIsRappelSpawn; }
 
 	COutputEvent	m_OnSpawnNPC;
 
@@ -95,7 +98,6 @@ public:
 	int		m_nMaxLiveChildren;	// max number of NPCs that this maker may have out at one time.
 
 	bool	m_bDisabled;
-	bool	m_bIsDynamicSpawn;			// Determines if level-designer has control over the npc_maker or the MOD
 
 	EHANDLE m_hIgnoreEntity;
 	string_t m_iszIngoreEnt;
@@ -121,8 +123,28 @@ public:
 	string_t m_spawnEquipment;
 	string_t m_RelationshipString;		// Used to load up relationship keyvalues
 	string_t m_ChildTargetName;
+};
+
+class CNPCMakerDynamic : public CNPCMaker
+{
+public:
+	DECLARE_CLASS(CNPCMakerDynamic, CNPCMaker);
+
+	CNPCMakerDynamic(void);
+
+	void MakerThink(void);
+	void Precache(void);
+
+	bool IsDepleted() { return false; }
+
+	virtual bool CanMakeNPC(bool bIgnoreSolidEntities);
+	virtual void MakeNPC(void);
+	virtual CNPCSpawnDestination* FindSpawnDestination();
+	virtual void DeathNotice(CBaseEntity* pVictim);
+
+	DECLARE_DATADESC();
+
 	string_t m_ChildModelName;			// If set, the soldier will use a custom model instead of the default one.
-	bool	m_bWaitingOnRappel;			// If true, the soldier will rappel down from the spawner. The spawner should be placed up
 };
 
 class CTemplateNPCMaker : public CBaseNPCMaker

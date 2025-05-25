@@ -320,6 +320,7 @@ private:
 #ifdef HL2_EPISODIC
 		TASK_CIT_HEAL_TOSS,
 #endif
+		TASK_CIT_FLEE_THE_MAP,
 
 	};
 
