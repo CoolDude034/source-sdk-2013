@@ -906,16 +906,20 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 						}
 					}
 
+					if (enableStealthBehaviors)
+					{
+						char keyName[MAPKEY_MAXLENGTH];
+						// Alarm trigger
+						if (FStrEq(pEntity->GetClassname(), "trigger_once") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "2528 -4112 -464"))
+						{
+							pEntity->KeyValue("StartDisabled", "1");
+						}
+					}
 					if (enableStealthBehaviors || !sv_d1_canals_08_helicopter_enabled.GetBool())
 					{
 						char keyName[MAPKEY_MAXLENGTH];
 						// Heli trigger
 						if (FStrEq(pEntity->GetClassname(), "trigger_once") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "-140 -1388 -528"))
-						{
-							pEntity->KeyValue("StartDisabled", "1");
-						}
-						// Alarm trigger
-						if (FStrEq(pEntity->GetClassname(), "trigger_once") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "2528 -4112 -464"))
 						{
 							pEntity->KeyValue("StartDisabled", "1");
 						}
