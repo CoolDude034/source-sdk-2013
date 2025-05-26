@@ -1152,6 +1152,10 @@ void C_BaseFlex::SetupWeights( const matrix3x4_t *pBoneToWorld, int nFlexWeightC
 #ifndef MAPBASE
 	m_iBlink = AddGlobalFlexController( "UH" );
 #endif
+#ifdef MAPBASE
+	m_iBlink = AddGlobalFlexController("blink");
+#endif
+
 
 	if ( SetupGlobalWeights( pBoneToWorld, nFlexWeightCount, pFlexWeights, pFlexDelayedWeights ) )
 	{
