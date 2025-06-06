@@ -259,22 +259,31 @@ private:
 int CCommandPoint::gm_nCommandPoints;
 
 LINK_ENTITY_TO_CLASS( info_target_command_point, CCommandPoint );
-BEGIN_DATADESC( CCommandPoint )
-	
+BEGIN_DATADESC(CCommandPoint)
+
 //	DEFINE_FIELD( m_bNotInTransition,	FIELD_BOOLEAN ),
-	DEFINE_INPUTFUNC( FIELD_VOID,	"OutsideTransition",	InputOutsideTransition ),
+DEFINE_INPUTFUNC(FIELD_VOID, "OutsideTransition", InputOutsideTransition),
 
 END_DATADESC()
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
+ConVar sv_allow_player_to_use_mattpipe("sv_allow_player_to_use_mattpipe", "0");
+
 class CMattsPipe : public CWeaponCrowbar
 {
 	DECLARE_CLASS( CMattsPipe, CWeaponCrowbar );
 
 	const char *GetWorldModel() const	{ return "models/props_canal/mattpipe.mdl"; }
-	void SetPickupTouch( void )	{	/* do nothing */ }
+	void SetPickupTouch(void)
+	{
+		// Allow the player to pickup matt's pipe
+		if (sv_allow_player_to_use_mattpipe.GetBool())
+		{
+			return BaseClass::SetPickupTouch();
+		}
+	}
 };
 
 #ifdef MAPBASE
