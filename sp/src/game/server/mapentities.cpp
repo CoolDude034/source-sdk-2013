@@ -754,16 +754,18 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 		Error( "classname missing from entity!\n" );
 	}
 
+	const char* newClass = MapEntity_PatchPropVehicleJeep(className);
+
 	pEntity = NULL;
-	if ( !pFilter || pFilter->ShouldCreateEntity( MapEntity_PatchPropVehicleJeep(className) ) )
+	if ( !pFilter || pFilter->ShouldCreateEntity( newClass ) )
 	{
 		//
 		// Construct via the LINK_ENTITY_TO_CLASS factory.
 		//
 		if ( pFilter )
-			pEntity = pFilter->CreateNextEntity( MapEntity_PatchPropVehicleJeep(className) );
+			pEntity = pFilter->CreateNextEntity( newClass );
 		else
-			pEntity = CreateEntityByName( MapEntity_PatchPropVehicleJeep(className) );
+			pEntity = CreateEntityByName( newClass );
 
 		//
 		// Set up keyvalues.
@@ -796,6 +798,7 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 							if (pEntity->NameMatches("halt_guy"))
 							{
 								pEntity->KeyValue("additionalequipment", "weapon_pistol");
+								pEntity->KeyValue("tacticalvariant", "0");
 							}
 						}
 					}

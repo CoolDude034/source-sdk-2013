@@ -740,6 +740,8 @@ void CNPCMakerDynamic::MakeNPC(void)
 	angles.z = 0.0;
 	pent->SetAbsAngles(angles);
 
+	pDestination->OnSpawnedNPC(pent);
+
 	pent->AddSpawnFlags(SF_NPC_FALL_TO_GROUND);
 	pent->AddSpawnFlags(SF_NPC_FADE_CORPSE);
 
