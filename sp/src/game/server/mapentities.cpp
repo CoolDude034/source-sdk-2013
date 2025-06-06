@@ -845,6 +845,15 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 					}
 				}
 
+				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_03"))
+				{
+					char weaponName[MAPKEY_MAXLENGTH];
+					if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+					{
+						pEntity->KeyValue("IsElite", "1");
+					}
+				}
+
 				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_trainstation_02"))
 				{
 					char keyName[MAPKEY_MAXLENGTH];
