@@ -11,8 +11,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-int g_numPumpkinsDestroyed = 0;
-
 class CPumpkin : public CPhysicsProp
 {
 	DECLARE_CLASS(CPumpkin, CPhysicsProp);
@@ -37,6 +35,12 @@ CPumpkin::CPumpkin()
 	SetMaxHealth(8);
 	SetHealth(8);
 	AddSpawnFlags(8388608); // Zombies can't swat this
+
+	string_t globalName = MAKE_STRING("pumpkins_destroyed");
+	if (GlobalEntity_GetIndex(globalName) == -1)
+	{
+		GlobalEntity_Add(globalName, gpGlobals->mapname, GLOBAL_ON);
+	}
 }
 
 void CPumpkin::Spawn(void)
@@ -65,8 +69,7 @@ void CPumpkin::OnBreak(const Vector& vecVelocity, const AngularImpulse& angVel, 
 {
 	BaseClass::OnBreak(vecVelocity, angVel, pBreaker);
 
-	g_numPumpkinsDestroyed++;
-	GlobalEntity_AddToCounter("pumpkins_destroyed", g_numPumpkinsDestroyed);
+	string_t globalName = MAKE_STRING("pumpkins_destroyed");
 
-	DevMsg("Pumpkin destroyed! Total destroyed: %d\n", g_numPumpkinsDestroyed);
+	GlobalEntity_AddToCounter(globalName, 1);
 }

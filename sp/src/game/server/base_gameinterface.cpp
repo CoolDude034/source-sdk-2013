@@ -22,6 +22,31 @@ void CServerGameClients::GetPlayerLimits( int& minplayers, int& maxplayers, int 
 // Mod-specific CServerGameDLL implementation.
 // -------------------------------------------------------------------------------------------- //
 
+ConVar difficulty("difficulty", "2");
+
 void CServerGameDLL::LevelInit_ParseAllEntities( const char *pMapEntities )
 {
+	switch (difficulty.GetInt())
+	{
+	case 1:
+		g_iSkillLevel = SKILL_EASY;
+		break;
+	case 2:
+		g_iSkillLevel = SKILL_MEDIUM;
+		break;
+	case 3:
+		g_iSkillLevel = SKILL_HARD;
+		break;
+	case 4:
+		g_iSkillLevel = SKILL_VERY_HARD;
+		break;
+	case 5:
+		g_iSkillLevel = SKILL_NIGHTMARE;
+		break;
+	default:
+		g_iSkillLevel = SKILL_MEDIUM;
+		break;
+	}
+
+	DevMsg("Difficulty set!\n");
 }

@@ -517,9 +517,16 @@ ConVar  alyx_darkness_force( "alyx_darkness_force", "0", FCVAR_CHEAT | FCVAR_REP
 			KeyValues* pLoadoutData = pMapData->FindKey("LoadoutData");
 			if (pLoadoutData)
 			{
-				FOR_EACH_SUBKEY(pLoadoutData, kvSubKey)
+				KeyValues* pWeaponInfo = pLoadoutData->FindKey("WeaponInfo");
+				if (pWeaponInfo)
 				{
-					pPlayer->GiveNamedItem(kvSubKey->GetName());
+					FOR_EACH_SUBKEY(pWeaponInfo, kvSubKey)
+					{
+						if (kvSubKey)
+						{
+							pPlayer->GiveNamedItem(kvSubKey->GetName());
+						}
+					}
 				}
 
 				// Fuck it...Just give every ammo type

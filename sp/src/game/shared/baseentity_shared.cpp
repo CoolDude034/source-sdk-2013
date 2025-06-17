@@ -87,7 +87,7 @@ ConVar	ai_debug_shoot_positions( "ai_debug_shoot_positions", "0", FCVAR_REPLICAT
 ConVar sv_enable_hitscan_weapons("sv_enable_hitscan_weapons", "0", FCVAR_CHEAT | FCVAR_REPLICATED | FCVAR_SPONLY);
 
 // Bullet travel time
-ConVar sk_bullet_speed("sk_bullet_speed", "15000", FCVAR_HIDDEN | FCVAR_REPLICATED);
+ConVar sk_bullet_speed("sk_bullet_speed", "15000", FCVAR_CHEAT | FCVAR_REPLICATED | FCVAR_SPONLY);
 
 #if defined(MAPBASE) && defined(GAME_DLL)
 ConVar	ai_shot_notify_targets( "ai_shot_notify_targets", "0", FCVAR_NONE, "Allows fired bullets to notify the NPCs and players they are targeting, regardless of whether they hit them or not. Can be used for custom AI and speech." );

@@ -52,7 +52,7 @@ public:
 			UTIL_EmitSoundSuit(pPlayer->edict(), "!HEV_AAx");	// long version of suit logon
 
 #ifdef MAPBASE
-		pPlayer->EquipSuit(!HasSpawnFlags(SF_SUIT_SHORTLOGON));
+		pPlayer->EquipSuit(!HasSpawnFlags(SF_SUIT_SHORTLOGON) || !sk_item_suit_short_logon_override.GetBool());
 #else
 		pPlayer->EquipSuit();
 #endif
