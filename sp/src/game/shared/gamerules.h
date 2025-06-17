@@ -41,6 +41,7 @@ class CAmmoDef;
 class CTacticalMissionManager;
 
 extern ConVar sk_autoaim_mode;
+extern ConVar custom_difficulty;
 
 // Autoaiming modes
 enum
@@ -239,7 +240,22 @@ public:
 	virtual void EndGameFrame( void );
 
 	virtual bool IsSkillLevel( int iLevel ) { return GetSkillLevel() == iLevel; }
-	virtual int	GetSkillLevel() { return g_iSkillLevel; }
+	//virtual int	GetSkillLevel() { return g_iSkillLevel; }
+	virtual int	GetSkillLevel()
+	{
+		if (custom_difficulty.GetInt() == 1)
+			return SKILL_EASY;
+		if (custom_difficulty.GetInt() == 2)
+			return SKILL_MEDIUM;
+		if (custom_difficulty.GetInt() == 3)
+			return SKILL_HARD;
+		if (custom_difficulty.GetInt() == 4)
+			return SKILL_VERY_HARD;
+		if (custom_difficulty.GetInt() == 5)
+			return SKILL_NIGHTMARE;
+
+		return SKILL_MEDIUM;
+	}
 	// Check if difficulty is Hard or above
 	virtual bool IsDifficultyHigher()
 	{
