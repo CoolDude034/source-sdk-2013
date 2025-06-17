@@ -330,7 +330,8 @@ void CGameRules::RefreshSkillData ( bool forceUpdate )
 
 	ConVarRef skill( "skill" );
 
-	SetSkillLevel( skill.IsValid() ? skill.GetInt() : 1 );
+	//SetSkillLevel( skill.IsValid() ? skill.GetInt() : 1 );
+	SetSkillLevel(custom_difficulty.GetInt());
 
 #ifdef HL2_DLL
 	// HL2 current only uses one skill config file that represents MEDIUM skill level and
@@ -638,7 +639,7 @@ ConVar skill( "skill", "1" );
 void CGameRules::Think()
 {
 	GetVoiceGameMgr()->Update( gpGlobals->frametime );
-	SetSkillLevel( skill.GetInt() );
+	SetSkillLevel( custom_difficulty.GetInt() );
 
 	if ( log_verbose_enable.GetBool() )
 	{
