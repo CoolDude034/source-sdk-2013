@@ -52,6 +52,7 @@ public:
 	bool IsEnabled();
 
 private:
+	float m_fStartTime;
 	float totalSeconds;
 	bool m_Enabled;
 };
@@ -63,14 +64,13 @@ DECLARE_HUDELEMENT(CHudSpeedrunTimer);
 //-----------------------------------------------------------------------------
 CHudSpeedrunTimer::CHudSpeedrunTimer(const char* pElementName) : CHudElement(pElementName), CHudBaseTimer(NULL, "HudSpeedrunTimer")
 {
-	SetPaintEnabled(true);
-	SetPaintBackgroundEnabled(false);
 }
 
 void CHudSpeedrunTimer::StartTimer()
 {
 	m_Enabled = true;
-	totalSeconds = gpGlobals->realtime;
+	m_fStartTime = gpGlobals->realtime;
+	SetPaintEnabled(true);
 }
 
 bool CHudSpeedrunTimer::IsEnabled()
@@ -92,7 +92,8 @@ void CHudSpeedrunTimer::Init()
 void CHudSpeedrunTimer::Reset()
 {
 	m_Enabled = false;
-	totalSeconds = 0;
+	m_fStartTime = 0;
+	SetPaintEnabled(false);
 }
 
 //-----------------------------------------------------------------------------
@@ -115,6 +116,14 @@ void CHudSpeedrunTimer::Paint()
 	wchar_t unicode[16];
 	swprintf(unicode, L"%02d:%02d:%02d", hours, minutes, seconds);
 
+	// TODO: customize the font later, for now just basic UI will do
+	// CreateFont() ignores .res file stuff so we need to customize the UI here within the code
+	HFont font = surface()->CreateFont();
+	surface()->DrawSetTextFont(font);
+	surface()->DrawSetTextColor(255, 255, 255, 255); // white
+	surface()->DrawSetTextPos(10, 10); // top-left corner
+	surface()->DrawPrintText(unicode, wcslen(unicode));
+
 	for (wchar_t* ch = unicode; *ch != 0; ch++)
 	{
 		surface()->DrawUnicodeChar(*ch);
@@ -127,7 +136,7 @@ void CHudSpeedrunTimer::Paint()
 void CHudSpeedrunTimer::OnThink()
 {
 	if (!m_Enabled) return;
-	totalSeconds = gpGlobals->realtime - totalSeconds;
+	totalSeconds = gpGlobals->realtime - m_fStartTime;
 }
 
 CON_COMMAND(roundtimer_start, "Start the round timer (should prob set the duration first before calling this)")
