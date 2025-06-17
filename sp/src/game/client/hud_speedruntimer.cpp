@@ -1,6 +1,6 @@
 //========= Copyright Valve Corporation, All rights reserved. ============//
 //
-// Purpose: This is a timer that will forever count upward
+// Purpose: This is a timer that will forever count upward in HH:MM:SS format
 //
 // $NoKeywords: $
 //
@@ -8,7 +8,7 @@
 //
 // Timer.cpp
 //
-// implementation of CHudRoundTimer class
+// implementation of CHudSpeedrunTimer class
 //
 #include "cbase.h"
 #include "hud.h"
@@ -48,8 +48,7 @@ public:
 	virtual void Reset(void);
 	virtual void OnThink();
 	virtual void Paint();
-	bool ShouldDraw();
-	void StartRoundtimer();
+	void StartTimer();
 	bool IsEnabled();
 
 private:
@@ -68,7 +67,7 @@ CHudSpeedrunTimer::CHudSpeedrunTimer(const char* pElementName) : CHudElement(pEl
 	SetPaintBackgroundEnabled(false);
 }
 
-void CHudSpeedrunTimer::StartRoundtimer()
+void CHudSpeedrunTimer::StartTimer()
 {
 	m_Enabled = true;
 	totalSeconds = gpGlobals->realtime;
@@ -123,16 +122,6 @@ void CHudSpeedrunTimer::Paint()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Save CPU cycles by letting the HUD system early cull
-// costly traversal.  Called per frame, return true if thinking and 
-// painting need to occur.
-//-----------------------------------------------------------------------------
-bool CHudSpeedrunTimer::ShouldDraw()
-{
-	return IsEnabled();
-}
-
-//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CHudSpeedrunTimer::OnThink()
@@ -153,6 +142,6 @@ CON_COMMAND(roundtimer_start, "Start the round timer (should prob set the durati
 	}
 	else
 	{
-		pHud->StartRoundtimer();
+		pHud->StartTimer();
 	}
 }
