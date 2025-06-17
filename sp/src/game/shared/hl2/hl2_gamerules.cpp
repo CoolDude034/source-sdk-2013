@@ -292,6 +292,8 @@ ConVar	sv_robust_explosions( "sv_robust_explosions","1", FCVAR_REPLICATED );
 ConVar	sk_dmg_inflict_scale1( "sk_dmg_inflict_scale1", "1.50", FCVAR_REPLICATED );
 ConVar	sk_dmg_inflict_scale2( "sk_dmg_inflict_scale2", "1.00", FCVAR_REPLICATED );
 ConVar	sk_dmg_inflict_scale3( "sk_dmg_inflict_scale3", "0.75", FCVAR_REPLICATED );
+ConVar	sk_dmg_inflict_scale4("sk_dmg_inflict_scale4", "0.75", FCVAR_REPLICATED);
+ConVar	sk_dmg_inflict_scale5("sk_dmg_inflict_scale5", "0.75", FCVAR_REPLICATED);
 
 // Damage scale for damage taken by the player on each skill level.
 ConVar	sk_dmg_take_scale1( "sk_dmg_take_scale1", "0.50", FCVAR_REPLICATED );
@@ -303,6 +305,10 @@ ConVar	sk_dmg_take_scale2( "sk_dmg_take_scale2", "1.00", FCVAR_REPLICATED );
 #endif//HL2_EPISODIC
 
 ConVar	sk_allow_autoaim( "sk_allow_autoaim", "1", FCVAR_REPLICATED | FCVAR_ARCHIVE_XBOX );
+
+// Custom damage scale
+ConVar	sk_dmg_take_scale4("sk_dmg_take_scale4", "2.0", FCVAR_REPLICATED);
+ConVar	sk_dmg_take_scale5("sk_dmg_take_scale5", "2.0", FCVAR_REPLICATED);
 
 // Autoaim scale
 ConVar	sk_autoaim_scale1( "sk_autoaim_scale1", "1.0", FCVAR_REPLICATED );
@@ -1900,11 +1906,11 @@ void CHalfLife2::AdjustPlayerDamageTaken( CTakeDamageInfo *pInfo )
 		break;
 
 	case SKILL_VERY_HARD:
-		pInfo->ScaleDamage(sk_dmg_take_scale3.GetFloat() * GetSkillLevel()); // 3
+		pInfo->ScaleDamage(sk_dmg_take_scale4.GetFloat());
 		break;
 
 	case SKILL_NIGHTMARE:
-		pInfo->ScaleDamage(sk_dmg_take_scale3.GetFloat() * GetSkillLevel()); // 3.75
+		pInfo->ScaleDamage(sk_dmg_take_scale5.GetFloat());
 		break;
 
 	}
@@ -1929,11 +1935,11 @@ float CHalfLife2::AdjustPlayerDamageInflicted( float damage )
 		break;
 
 	case SKILL_VERY_HARD:
-		return damage * sk_dmg_inflict_scale3.GetFloat() / GetSkillLevel(); // 0.75 divided by 4, equals 0.1875
+		return damage * sk_dmg_inflict_scale4.GetFloat();
 		break;
 
 	case SKILL_NIGHTMARE:
-		return damage * sk_dmg_inflict_scale3.GetFloat() / GetSkillLevel(); // 0.75 divided by 5, equals 0.15
+		return damage * sk_dmg_inflict_scale5.GetFloat();
 		break;
 
 	default:
