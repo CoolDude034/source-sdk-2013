@@ -294,6 +294,7 @@ ConVar	sk_dmg_inflict_scale2( "sk_dmg_inflict_scale2", "1.00", FCVAR_REPLICATED 
 ConVar	sk_dmg_inflict_scale3( "sk_dmg_inflict_scale3", "0.75", FCVAR_REPLICATED );
 ConVar	sk_dmg_inflict_scale4("sk_dmg_inflict_scale4", "0.75", FCVAR_REPLICATED);
 ConVar	sk_dmg_inflict_scale5("sk_dmg_inflict_scale5", "0.75", FCVAR_REPLICATED);
+ConVar	sk_dmg_inflict_scale_custom("sk_dmg_inflict_scale_custom", "2", FCVAR_REPLICATED);
 
 // Damage scale for damage taken by the player on each skill level.
 ConVar	sk_dmg_take_scale1( "sk_dmg_take_scale1", "0.50", FCVAR_REPLICATED );
@@ -309,6 +310,7 @@ ConVar	sk_allow_autoaim( "sk_allow_autoaim", "1", FCVAR_REPLICATED | FCVAR_ARCHI
 // Custom damage scale
 ConVar	sk_dmg_take_scale4("sk_dmg_take_scale4", "2.0", FCVAR_REPLICATED);
 ConVar	sk_dmg_take_scale5("sk_dmg_take_scale5", "2.0", FCVAR_REPLICATED);
+ConVar	sk_dmg_take_scale_custom("sk_dmg_take_scale_custom", "2", FCVAR_REPLICATED);
 
 // Autoaim scale
 ConVar	sk_autoaim_scale1( "sk_autoaim_scale1", "1.0", FCVAR_REPLICATED );
@@ -1913,6 +1915,10 @@ void CHalfLife2::AdjustPlayerDamageTaken( CTakeDamageInfo *pInfo )
 		pInfo->ScaleDamage(sk_dmg_take_scale5.GetFloat());
 		break;
 
+	default:
+		pInfo->ScaleDamage(sk_dmg_take_scale5.GetFloat() * sk_dmg_take_scale_custom.GetFloat()); // 4
+		break;
+
 	}
 }
 
@@ -1943,7 +1949,7 @@ float CHalfLife2::AdjustPlayerDamageInflicted( float damage )
 		break;
 
 	default:
-		return damage;
+		return damage * sk_dmg_inflict_scale5.GetFloat() / sk_dmg_inflict_scale_custom.GetFloat(); // 0.375
 		break;
 	}
 }
