@@ -254,7 +254,7 @@ public:
 		if (custom_difficulty.GetInt() == 5)
 			return SKILL_NIGHTMARE;
 
-		return SKILL_MEDIUM;
+		return custom_difficulty.GetInt();
 	}
 	// Check if difficulty is Hard or above
 	virtual bool IsDifficultyHigher()
