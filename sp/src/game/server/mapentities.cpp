@@ -730,6 +730,8 @@ ConVar sv_global_map_tweaks("sv_global_map_tweaks", "0");
 ConVar sv_d1_canals_08_elite_cops_map_tweak("sv_d1_canals_08_elite_cops_map_tweak", "0");
 ConVar sv_d3_c17_elite_cops_override("sv_d3_c17_elite_cops_override", "-1");
 ConVar sv_d3_c17_07_song_replacement("sv_d3_c17_07_song_replacement", "song31");
+ConVar sv_d3_c17_07_song_spawnflags("sv_d3_c17_07_song_spawnflags", "-1");
+ConVar sv_d3_c17_07_alyx_script_vscript("sv_d3_c17_07_alyx_script_vscript", "");
 
 const char* MapEntity_PatchPropVehicleJeep(char* className)
 {
@@ -932,6 +934,16 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 				if (!FStrEq(sv_d3_c17_07_song_replacement.GetString(), "") && FStrEq(pEntity->GetClassname(), "ambient_generic") && pEntity->NameMatches("lcs_pregate02a_song"))
 				{
 					pEntity->KeyValue("message", sv_d3_c17_07_song_replacement.GetString());
+					if (!FStrEq(sv_d3_c17_07_song_spawnflags.GetString(), "") || !FStrEq(sv_d3_c17_07_song_spawnflags.GetString(), "-1"))
+					{
+						pEntity->KeyValue("spawnflags", sv_d3_c17_07_song_spawnflags.GetString());
+					}
+				}
+
+				// Allow us to hook into when Alyx begins hacking the thing
+				if (!FStrEq(sv_d3_c17_07_alyx_script_vscript.GetString(), "") && FStrEq(pEntity->GetClassname(), "scripted_sequence") && pEntity->NameMatches("alyx_atwork_seq"))
+				{
+					pEntity->KeyValue("vscripts", sv_d3_c17_07_alyx_script_vscript.GetString());
 				}
 			}
 		}
