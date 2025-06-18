@@ -575,12 +575,13 @@ ConVar dyn_spawner_weapon_slot4_chance("dyn_spawner_weapon_slot4_chance", "0.02"
 ConVar dyn_spawner_spawn_cap("dyn_spawner_spawn_cap", "5", FCVAR_HIDDEN);
 ConVar dyn_spawner_spawn_freq("dyn_spawner_spawn_freq", "1.5", FCVAR_HIDDEN);
 ConVar dyn_spawner_spawn_point_name("dyn_spawner_spawn_point_name", "info_npc_enemy_spawn", FCVAR_HIDDEN);
-ConVar dyn_spawner_spawn_point_visiblity("dyn_spawner_spawn_point_visiblity", "default", FCVAR_HIDDEN);
+ConVar dyn_spawner_spawn_point_check_visible("dyn_spawner_spawn_point_check_visible", "1", FCVAR_HIDDEN);
 ConVar dyn_spawner_spawn_point_distance("dyn_spawner_spawn_point_distance", "default", FCVAR_HIDDEN);
 ConVar dyn_spawner_spawn_distance("dyn_spawner_spawn_distance", "400", FCVAR_HIDDEN);
 
 ConVar dyn_spawner_soldier_model("dyn_spawner_soldier_model", "models/combine_soldier.mdl", FCVAR_HIDDEN);
 ConVar dyn_spawner_grenade_amount("dyn_spawner_grenade_amount", "5", FCVAR_HIDDEN);
+ConVar dyn_spawner_fire_children_died_event("dyn_spawner_fire_children_died_event", "1", FCVAR_HIDDEN);
 
 int g_numNPCs;
 float g_spawnFreq;
@@ -589,17 +590,26 @@ LINK_ENTITY_TO_CLASS(npc_maker_dynamic, CNPCMakerDynamic);
 
 BEGIN_DATADESC(CNPCMakerDynamic)
 DEFINE_KEYFIELD(m_ChildModelName, FIELD_MODELNAME, "ModelOverride"),
-//DEFINE_KEYFIELD(m_bWaitingOnRappel, FIELD_BOOLEAN, "WaitingForRappel"),
+//DEFINE_KEYFIELD(m_bWaitingOnRappel, FIELD_BOOLEAN, "WaitingForRappel"), // Handled by it's spawn point
+
+// INPUTS
+DEFINE_INPUTFUNC(FIELD_INTEGER, "ChangeModel", InputChangeModel),
 END_DATADESC()
 
 CNPCMakerDynamic::CNPCMakerDynamic(void)
 {
 	g_spawnFreq = dyn_spawner_spawn_freq.GetFloat();
+	g_numNPCs = 0;
+}
+
+void CNPCMakerDynamic::InputChangeModel(inputdata_t& inputdata)
+{
+	m_ChildModelName = MAKE_STRING(inputdata.value.String());
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: Precache the target NPC
-// Overriden because we're hard-coding the classname instead
+// Overriden because we're hard-coding the classname instead as we only spawning npc_combine_s
 // but we also need to precache the models used by the spawner
 //-----------------------------------------------------------------------------
 void CNPCMakerDynamic::Precache(void)
@@ -623,6 +633,14 @@ void CNPCMakerDynamic::DeathNotice(CBaseEntity* pVictim)
 
 	// If we're here, we're getting erroneous death messages from children we haven't created
 	AssertMsg(g_numNPCs >= 0, "npc_maker_dynamic receiving child death notice but thinks has no children\n");
+
+	if (dyn_spawner_fire_children_died_event.GetBool())
+	{
+		if (g_numNPCs <= 0)
+		{
+			m_OnAllLiveChildrenDead.FireOutput(this, this);
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -842,7 +860,9 @@ CNPCSpawnDestination* CNPCMakerDynamic::FindSpawnDestination()
 			bool fValid = true;
 			Vector vecTest = pDestination->GetAbsOrigin();
 
-			if (!FStrEq(dyn_spawner_spawn_point_visiblity.GetString(), "disabled"))
+			bool checkVisibility = dyn_spawner_spawn_point_check_visible.GetBool();
+
+			if (checkVisibility)
 			{
 				// Right now View Cone check is omitted intentionally.
 				Vector vecTopOfHull = NAI_Hull::Maxs(HULL_HUMAN);
@@ -850,7 +870,7 @@ CNPCSpawnDestination* CNPCMakerDynamic::FindSpawnDestination()
 				vecTopOfHull.y = 0;
 				bool fVisible = (pPlayer->FVisible(vecTest) || pPlayer->FVisible(vecTest + vecTopOfHull));
 
-				if (FStrEq(dyn_spawner_spawn_point_visiblity.GetString(), "enabled"))
+				if (checkVisibility)
 				{
 					if (!fVisible)
 						fValid = false;
@@ -910,7 +930,7 @@ CNPCSpawnDestination* CNPCMakerDynamic::FindSpawnDestination()
 				Vector vecTest = pDestinations[i]->GetAbsOrigin();
 				float flDist = (vecTest - pPlayer->GetAbsOrigin()).Length();
 
-				if (dyn_spawner_spawn_distance.GetFloat() != 0 && dyn_spawner_spawn_distance.GetFloat() > flDist)
+				if (dyn_spawner_spawn_distance.GetFloat() != 0 && flDist < dyn_spawner_spawn_distance.GetFloat())
 					continue;
 
 				if (flDist < flNearest && HumanHullFits(vecTest))
@@ -932,7 +952,7 @@ CNPCSpawnDestination* CNPCMakerDynamic::FindSpawnDestination()
 				Vector vecTest = pDestinations[i]->GetAbsOrigin();
 				float flDist = (vecTest - pPlayer->GetAbsOrigin()).Length();
 
-				if (dyn_spawner_spawn_distance.GetFloat() != 0 && dyn_spawner_spawn_distance.GetFloat() > flDist)
+				if (dyn_spawner_spawn_distance.GetFloat() != 0 && flDist > dyn_spawner_spawn_distance.GetFloat())
 					continue;
 
 				if (flDist > flFarthest && HumanHullFits(vecTest))

@@ -142,6 +142,8 @@ public:
 	virtual CNPCSpawnDestination* FindSpawnDestination();
 	virtual void DeathNotice(CBaseEntity* pVictim);
 
+	void InputChangeModel(inputdata_t& inputdata);
+
 	DECLARE_DATADESC();
 
 	string_t m_ChildModelName;			// If set, the soldier will use a custom model instead of the default one.
