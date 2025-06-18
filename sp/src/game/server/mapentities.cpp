@@ -731,6 +731,7 @@ ConVar sv_d1_canals_08_elite_cops_map_tweak("sv_d1_canals_08_elite_cops_map_twea
 ConVar sv_d3_c17_elite_cops_override("sv_d3_c17_elite_cops_override", "-1");
 ConVar sv_d3_c17_07_song_replacement("sv_d3_c17_07_song_replacement", "song31");
 ConVar sv_d3_c17_07_song_spawnflags("sv_d3_c17_07_song_spawnflags", "-1");
+ConVar sv_d3_c17_07_song_soundflags("sv_d3_c17_07_song_soundflags", "-1");
 ConVar sv_d3_c17_07_alyx_script_vscript("sv_d3_c17_07_alyx_script_vscript", "");
 
 const char* MapEntity_PatchPropVehicleJeep(char* className)
@@ -937,6 +938,10 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 					if (!FStrEq(sv_d3_c17_07_song_spawnflags.GetString(), "") || !FStrEq(sv_d3_c17_07_song_spawnflags.GetString(), "-1"))
 					{
 						pEntity->KeyValue("spawnflags", sv_d3_c17_07_song_spawnflags.GetString());
+					}
+					if (!FStrEq(sv_d3_c17_07_song_soundflags.GetString(), "") || !FStrEq(sv_d3_c17_07_song_soundflags.GetString(), "-1"))
+					{
+						pEntity->KeyValue("soundflags", sv_d3_c17_07_song_soundflags.GetString());
 					}
 				}
 
