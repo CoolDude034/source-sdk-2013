@@ -43,6 +43,7 @@ BEGIN_DATADESC( CNPCSpawnDestination )
 	DEFINE_FIELD( m_TimeNextAvailable, FIELD_TIME ),
 
 	DEFINE_KEYFIELD(m_bIsRappelSpawn, FIELD_BOOLEAN, "IsRappelSpawn"),
+	DEFINE_KEYFIELD(m_ChildModelName, FIELD_STRING, "ModelOverride"),
 
 	DEFINE_OUTPUT( m_OnSpawnNPC,	"OnSpawnNPC" ),
 END_DATADESC()
@@ -589,22 +590,13 @@ float g_spawnFreq;
 LINK_ENTITY_TO_CLASS(npc_maker_dynamic, CNPCMakerDynamic);
 
 BEGIN_DATADESC(CNPCMakerDynamic)
-DEFINE_KEYFIELD(m_ChildModelName, FIELD_MODELNAME, "ModelOverride"),
 //DEFINE_KEYFIELD(m_bWaitingOnRappel, FIELD_BOOLEAN, "WaitingForRappel"), // Handled by it's spawn point
-
-// INPUTS
-DEFINE_INPUTFUNC(FIELD_INTEGER, "ChangeModel", InputChangeModel),
 END_DATADESC()
 
 CNPCMakerDynamic::CNPCMakerDynamic(void)
 {
 	g_spawnFreq = dyn_spawner_spawn_freq.GetFloat();
 	g_numNPCs = 0;
-}
-
-void CNPCMakerDynamic::InputChangeModel(inputdata_t& inputdata)
-{
-	m_ChildModelName = MAKE_STRING(inputdata.value.String());
 }
 
 //-----------------------------------------------------------------------------
@@ -615,15 +607,7 @@ void CNPCMakerDynamic::InputChangeModel(inputdata_t& inputdata)
 void CNPCMakerDynamic::Precache(void)
 {
 	UTIL_PrecacheOther("npc_combine_s");
-
-	if (m_ChildModelName != NULL_STRING)
-	{
-		PrecacheModel(m_ChildModelName.ToCStr());
-	}
-	else
-	{
-		PrecacheModel(dyn_spawner_soldier_model.GetString());
-	}
+	PrecacheModel(dyn_spawner_soldier_model.GetString());
 }
 
 void CNPCMakerDynamic::DeathNotice(CBaseEntity* pVictim)
@@ -795,9 +779,9 @@ void CNPCMakerDynamic::MakeNPC(void)
 		pent->SetHintGroup(m_strHintGroup);
 	}
 
-	if (m_ChildModelName != NULL_STRING)
+	if (pDestination->m_ChildModelName != NULL_STRING)
 	{
-		pent->SetModelName(m_ChildModelName);
+		pent->SetModelName(pDestination->m_ChildModelName);
 	}
 	else
 	{

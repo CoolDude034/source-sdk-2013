@@ -40,6 +40,7 @@ public:
 	string_t	m_RenameNPC;		// If not NULL, rename the NPC that spawns here to this.
 	float		m_TimeNextAvailable;// The time at which this destination will be available again.
 	bool		m_bIsRappelSpawn; // Only used by npc_maker_dynamic to tell that this spawn should start the NPC rappeling down
+	string_t	m_ChildModelName; // (Only used by npc_maker_dynamic) If set, the soldier will use a custom model instead of the default one.
 
 	bool		IsRappelSpawn() { return m_bIsRappelSpawn; }
 
@@ -142,11 +143,7 @@ public:
 	virtual CNPCSpawnDestination* FindSpawnDestination();
 	virtual void DeathNotice(CBaseEntity* pVictim);
 
-	void InputChangeModel(inputdata_t& inputdata);
-
 	DECLARE_DATADESC();
-
-	string_t m_ChildModelName;			// If set, the soldier will use a custom model instead of the default one.
 };
 
 class CTemplateNPCMaker : public CBaseNPCMaker
