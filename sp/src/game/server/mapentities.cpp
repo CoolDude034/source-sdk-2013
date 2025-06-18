@@ -637,13 +637,13 @@ void MapEntity_ParseAllEntities(const char *pMapData, IMapEntityFilter *pFilter,
 						}
 					}
 
-					// In case it defaulted to npc_combine_s, spawn them with a pistol
+					// In case it defaulted to npc_combine_s, spawn them with a MP7
 					// yeah im using they/them to refer to combines because they are trans
 					// as in transhuman
 					// okay i leave
 					if (!pEntityData->FindKey("additionalequipment"))
 					{
-						pEntity->KeyValue("additionalequipment", "weapon_pistol");
+						pEntity->KeyValue("additionalequipment", "weapon_smg1");
 					}
 
 					pSpawnList[nEntities].m_pEntity = pEntity;
@@ -727,9 +727,9 @@ void MapEntity_PrecacheEntity( const char *pEntData, int &nStringSize )
 ConVar npc_metropolice_early_canal_tweaks("npc_metropolice_early_canal_tweaks", "0");
 ConVar sv_patch_prop_vehicle_jeep("sv_patch_prop_vehicle_jeep", "0");
 ConVar sv_global_map_tweaks("sv_global_map_tweaks", "0");
-ConVar sv_d1_canals_08_stealth_map_tweak("sv_d1_canals_08_stealth_map_tweak", "0");
 ConVar sv_d1_canals_08_elite_cops_map_tweak("sv_d1_canals_08_elite_cops_map_tweak", "0");
-ConVar sv_d1_canals_08_helicopter_enabled("sv_d1_canals_08_helicopter_enabled", "1");
+ConVar sv_d3_c17_elite_cops_override("sv_d3_c17_elite_cops_override", "-1");
+ConVar sv_d3_c17_07_song_replacement("sv_d3_c17_07_song_replacement", "song31");
 
 const char* MapEntity_PatchPropVehicleJeep(char* className)
 {
@@ -838,6 +838,27 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 
 				if (V_strnicmp(gpGlobals->mapname.ToCStr(), "d3_c17_", strlen("d3_c17_")) == 0)
 				{
+					if (sv_d3_c17_elite_cops_override.GetInt() == 1)
+					{
+						char weaponName[MAPKEY_MAXLENGTH];
+						if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+						{
+							pEntity->KeyValue("IsElite", "1");
+						}
+					}
+					else if (sv_d3_c17_elite_cops_override.GetInt() == 2)
+					{
+						pEntity->KeyValue("IsElite", "1");
+					}
+					else if (sv_d3_c17_elite_cops_override.GetInt() == 3)
+					{
+						pEntity->KeyValue("additionalequipment", "weapon_smg1");
+						pEntity->KeyValue("IsElite", "1");
+					}
+				}
+
+				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_03") || FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_12"))
+				{
 					char weaponName[MAPKEY_MAXLENGTH];
 					if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
 					{
@@ -845,12 +866,19 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 					}
 				}
 
-				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_03"))
+				if (sv_d1_canals_08_elite_cops_map_tweak.GetBool())
 				{
-					char weaponName[MAPKEY_MAXLENGTH];
-					if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+					// Swap some of the outpost cops with elite variants
+					if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_08"))
 					{
-						pEntity->KeyValue("IsElite", "1");
+						if (pEntity->NameMatches("warehouse_cop_with_manhack") || pEntity->NameMatches("npc_warehouse_assault*"))
+						{
+							char weaponName[MAPKEY_MAXLENGTH];
+							if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+							{
+								pEntity->KeyValue("IsElite", "1");
+							}
+						}
 					}
 				}
 
@@ -862,6 +890,7 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 						pEntity->KeyValue("vscripts", "world/ration_dispenser");
 					}
 
+					// So we can check if the player harmed any of the map-placed cops and citizens
 					if (FStrEq(pEntity->GetClassname(), "npc_metropolice") || FStrEq(pEntity->GetClassname(), "npc_citizen"))
 					{
 						pEntity->KeyValue("vscripts", "npcs/ai/events/react_to_attack");
@@ -896,46 +925,13 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 						pEntity->KeyValue("IsElite", "1");
 					}
 				}
-
-				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_08"))
+			}
+			// Hook the d3_c17_07 song so we can modify it's message
+			if (FStrEq(gpGlobals->mapname.ToCStr(), "d3_c17_07"))
+			{
+				if (!FStrEq(sv_d3_c17_07_song_replacement.GetString(), "") && FStrEq(pEntity->GetClassname(), "ambient_generic") && pEntity->NameMatches("lcs_pregate02a_song"))
 				{
-					bool enableStealthBehaviors = sv_d1_canals_08_stealth_map_tweak.GetBool();
-					if (FStrEq(pEntity->GetClassname(), "npc_metropolice"))
-					{
-						if (sv_d1_canals_08_elite_cops_map_tweak.GetBool())
-						{
-							char weaponName[MAPKEY_MAXLENGTH];
-							if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
-							{
-								pEntity->KeyValue("IsElite", "1");
-							}
-						}
-
-						if (enableStealthBehaviors)
-						{
-							pEntity->KeyValue("ignoreunseenenemies", "1");
-							pEntity->KeyValue("vscripts", "npcs/stealth_behaviors");
-						}
-					}
-
-					if (enableStealthBehaviors)
-					{
-						char keyName[MAPKEY_MAXLENGTH];
-						// Alarm trigger
-						if (FStrEq(pEntity->GetClassname(), "trigger_once") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "2528 -4112 -464"))
-						{
-							pEntity->KeyValue("StartDisabled", "1");
-						}
-					}
-					if (enableStealthBehaviors || !sv_d1_canals_08_helicopter_enabled.GetBool())
-					{
-						char keyName[MAPKEY_MAXLENGTH];
-						// Heli trigger
-						if (FStrEq(pEntity->GetClassname(), "trigger_once") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "-140 -1388 -528"))
-						{
-							pEntity->KeyValue("StartDisabled", "1");
-						}
-					}
+					pEntity->KeyValue("message", sv_d3_c17_07_song_replacement.GetString());
 				}
 			}
 		}
