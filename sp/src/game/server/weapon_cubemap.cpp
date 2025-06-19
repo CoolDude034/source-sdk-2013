@@ -21,8 +21,6 @@ public:
 
 	void	Spawn( void );
 
-	bool	HasIronsights(void) { return false; }
-
 	DECLARE_SERVERCLASS();
 };
 

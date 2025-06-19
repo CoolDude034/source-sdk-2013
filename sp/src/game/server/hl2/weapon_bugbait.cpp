@@ -56,7 +56,6 @@ public:
 	void	SetSporeEmitterState( bool state = true );
 
 	bool	ShouldDisplayHUDHint() { return true; }
-	bool	HasIronsights(void) { return false; }
 
 	DECLARE_DATADESC();
 #ifdef MAPBASE

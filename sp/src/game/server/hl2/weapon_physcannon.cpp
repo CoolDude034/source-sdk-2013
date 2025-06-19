@@ -1337,7 +1337,6 @@ public:
 	bool	IsAccountableForObject( CBaseEntity *pObject );
 	
 	bool	ShouldDisplayHUDHint() { return true; }
-	bool	HasIronsights(void) { return false; }
 
 
 

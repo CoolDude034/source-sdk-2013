@@ -2976,6 +2976,11 @@ float CBaseCombatWeapon::GetIronsightFOVOffset(void) const
 	return GetWpnData().flIronsightFOVOffset;
 }
 
+bool CBaseCombatWeapon::HasIronsights(void)
+{
+	return GetWpnData().m_bHasIronSight;
+}
+
 bool CBaseCombatWeapon::IsIronsighted(void)
 {
 	return (m_bIsIronsighted);
@@ -3010,7 +3015,7 @@ void CBaseCombatWeapon::EnableIronsights(void)
 	if (!pOwner)
 		return;
 
-	if (pOwner->SetFOV(this, pOwner->GetDefaultFOV() + GetIronsightFOVOffset(), 0.4f)) //modify the last value to adjust how fast the fov is applied
+	if (pOwner->SetFOV(this, pOwner->GetDefaultFOV() + GetIronsightFOVOffset(), 1.0f)) //modify the last value to adjust how fast the fov is applied
 	{
 		ConVar* crosshair = cvar->FindVar("crosshair");
 		crosshair->SetValue("0");
@@ -3034,7 +3039,7 @@ void CBaseCombatWeapon::DisableIronsights(void)
 	if (!pOwner)
 		return;
 
-	if (pOwner->SetFOV(this, 0, 0.2f)) //modify the last value to adjust how fast the fov is applied
+	if (pOwner->SetFOV(this, 0, 0.4f)) //modify the last value to adjust how fast the fov is applied
 	{
 		ConVar* crosshair = cvar->FindVar("crosshair");
 		crosshair->SetValue("1");

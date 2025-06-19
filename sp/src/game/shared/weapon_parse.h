@@ -118,6 +118,7 @@ public:
 	Vector					vecIronsightPosOffset;
 	QAngle					angIronsightAngOffset;
 	float					flIronsightFOVOffset;
+	bool					m_bHasIronSight;
 
 	// Sound blocks
 	char					aShootSounds[NUM_SHOOT_SOUND_TYPES][MAX_WEAPON_STRING];	

@@ -55,8 +55,6 @@ public:
 
 	bool	ShouldDisplayHUDHint() { return true; }
 
-	bool	HasIronsights(void) { return false; }
-
 private:
 	void	ThrowGrenade( CBasePlayer *pPlayer );
 	void	RollGrenade( CBasePlayer *pPlayer );
