@@ -3001,10 +3001,10 @@ void CBaseCombatWeapon::ToggleIronsights(void)
 void CBaseCombatWeapon::EnableIronsights(void)
 {
 #ifdef CLIENT_DLL
-	if (!prediction->IsFirstTimePredicted())
+	if (gpGlobals->maxClients > 1 && !prediction->IsFirstTimePredicted())
 		return;
 #endif
-	if (!HasIronsights() || m_bIsIronsighted)
+	if (!HasIronsights())
 		return;
 
 	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
@@ -3028,7 +3028,7 @@ void CBaseCombatWeapon::DisableIronsights(void)
 	if (gpGlobals->maxClients > 1 && !prediction->IsFirstTimePredicted())
 		return;
 #endif
-	if (!HasIronsights() || !m_bIsIronsighted)
+	if (!HasIronsights())
 		return;
 
 	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
