@@ -2994,6 +2994,9 @@ void CBaseCombatWeapon::ToggleIronsights(void)
 		EnableIronsights();
 }
 
+ConVar cl_enable_ironsight_fov_speed("cl_enable_ironsight_fov_speed", "1.0");
+ConVar cl_disable_ironsight_fov_speed("cl_disable_ironsight_fov_speed", "0.4");
+
 void CBaseCombatWeapon::EnableIronsights(void)
 {
 #ifdef CLIENT_DLL
@@ -3008,7 +3011,7 @@ void CBaseCombatWeapon::EnableIronsights(void)
 	if (!pOwner)
 		return;
 
-	if (pOwner->SetFOV(this, pOwner->GetDefaultFOV() + GetIronsightFOVOffset(), 1.0f)) //modify the last value to adjust how fast the fov is applied
+	if (pOwner->SetFOV(this, pOwner->GetDefaultFOV() + GetIronsightFOVOffset(), cl_enable_ironsight_fov_speed.GetFloat())) //modify the last value to adjust how fast the fov is applied
 	{
 		ConVar* crosshair = cvar->FindVar("crosshair");
 		crosshair->SetValue("0");
@@ -3032,7 +3035,7 @@ void CBaseCombatWeapon::DisableIronsights(void)
 	if (!pOwner)
 		return;
 
-	if (pOwner->SetFOV(this, 0, 0.4f)) //modify the last value to adjust how fast the fov is applied
+	if (pOwner->SetFOV(this, 0, cl_disable_ironsight_fov_speed.GetFloat())) //modify the last value to adjust how fast the fov is applied
 	{
 		ConVar* crosshair = cvar->FindVar("crosshair");
 		crosshair->SetValue("1");
@@ -3329,6 +3332,13 @@ BEGIN_ENT_SCRIPTDESC( CBaseCombatWeapon, CBaseAnimating, "The base class for all
 	DEFINE_SCRIPTFUNC_SV( SetNextPrimaryAttack, "Sets the next time PrimaryAttack() will run when the player is pressing +ATTACK." )
 	DEFINE_SCRIPTFUNC( NextSecondaryAttack, "Returns the next time SecondaryAttack() will run when the player is pressing +ATTACK2." )
 	DEFINE_SCRIPTFUNC_SV( SetNextSecondaryAttack, "Sets the next time SecondaryAttack() will run when the player is pressing +ATTACK2." )
+
+	// Iron-Sight VScript functions
+	DEFINE_SCRIPTFUNC(GetIronsightPositionOffset, "Returns the position offset when the weapon is iron-sighted")
+	DEFINE_SCRIPTFUNC(GetIronsightAngleOffset, "Returns the angle offset when the weapon is iron-sighted")
+	DEFINE_SCRIPTFUNC(GetIronsightFOVOffset, "Returns the FOV offset when the weapon is iron-sighted")
+	DEFINE_SCRIPTFUNC(HasIronsights, "Returns whether the weapon has iron-sights")
+	DEFINE_SCRIPTFUNC(IsIronsighted, "Returns whether the weapon is iron-sighted")
 
 END_SCRIPTDESC();
 #endif

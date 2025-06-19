@@ -379,6 +379,8 @@ void CBaseViewModel::SetWeaponModel( const char *modelname, CBaseCombatWeapon *w
 #endif
 }
 
+ConVar cl_ironsighted_interpolation_time("cl_ironsighted_interpolation_time", "2.5");
+
 void CBaseViewModel::CalcIronsights(Vector& pos, QAngle& ang)
 {
 	CBaseCombatWeapon* pWeapon = GetOwningWeapon();
@@ -387,7 +389,7 @@ void CBaseViewModel::CalcIronsights(Vector& pos, QAngle& ang)
 		return;
 
 	//get delta time for interpolation
-	float delta = (gpGlobals->curtime - pWeapon->m_flIronsightedTime) * 2.5f; //modify this value to adjust how fast the interpolation is
+	float delta = (gpGlobals->curtime - pWeapon->m_flIronsightedTime) * cl_ironsighted_interpolation_time.GetFloat(); //modify this value to adjust how fast the interpolation is
 	float exp = (pWeapon->IsIronsighted()) ?
 		(delta > 1.0f) ? 1.0f : delta : //normal blending
 		(delta > 1.0f) ? 0.0f : 1.0f - delta; //reverse interpolation
