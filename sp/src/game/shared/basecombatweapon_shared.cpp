@@ -2996,7 +2996,15 @@ void CBaseCombatWeapon::ToggleIronsights(void)
 
 ConVar cl_enable_ironsight_fov_speed("cl_enable_ironsight_fov_speed", "1.0");
 ConVar cl_disable_ironsight_fov_speed("cl_disable_ironsight_fov_speed", "0.4");
-ConVar sv_disable_ironsights_when_reloading("sv_disable_ironsights_when_reloading", "0");
+ConVar cl_disable_ironsights_when_reloading("cl_disable_ironsights_when_reloading", "0");
+ConVar cl_disable_crosshair_when_ads("cl_disable_crosshair_when_ads", "0");
+
+float GetEnableddIronsightFOVSpeed()
+{
+	if (gpGlobals->maxClients == 1)
+		return cl_enable_ironsight_fov_speed.GetFloat();
+	return 1.0f;
+}
 
 void CBaseCombatWeapon::EnableIronsights(void)
 {
@@ -3012,14 +3020,24 @@ void CBaseCombatWeapon::EnableIronsights(void)
 	if (!pOwner)
 		return;
 
-	if (pOwner->SetFOV(this, pOwner->GetDefaultFOV() + GetIronsightFOVOffset(), cl_enable_ironsight_fov_speed.GetFloat())) //modify the last value to adjust how fast the fov is applied
+	if (pOwner->SetFOV(this, pOwner->GetDefaultFOV() + GetIronsightFOVOffset(), GetEnableddIronsightFOVSpeed())) //modify the last value to adjust how fast the fov is applied
 	{
-		ConVar* crosshair = cvar->FindVar("crosshair");
-		crosshair->SetValue("0");
+		if (cl_disable_crosshair_when_ads.GetBool())
+		{
+			ConVar* crosshair = cvar->FindVar("crosshair");
+			crosshair->SetValue("0");
+		}
 		m_bIsIronsighted = true;
 		SetIronsightTime();
 		pOwner->EmitSound("Weapon.IronSightIn");
 	}
+}
+
+float GetDisabledIronsightFOVSpeed()
+{
+	if (gpGlobals->maxClients == 1)
+		return cl_disable_ironsight_fov_speed.GetFloat();
+	return 0.4f;
 }
 
 void CBaseCombatWeapon::DisableIronsights(void)
@@ -3036,10 +3054,13 @@ void CBaseCombatWeapon::DisableIronsights(void)
 	if (!pOwner)
 		return;
 
-	if (pOwner->SetFOV(this, 0, cl_disable_ironsight_fov_speed.GetFloat())) //modify the last value to adjust how fast the fov is applied
+	if (pOwner->SetFOV(this, 0, GetDisabledIronsightFOVSpeed())) //modify the last value to adjust how fast the fov is applied
 	{
-		ConVar* crosshair = cvar->FindVar("crosshair");
-		crosshair->SetValue("1");
+		if (cl_disable_crosshair_when_ads.GetBool())
+		{
+			ConVar* crosshair = cvar->FindVar("crosshair");
+			crosshair->SetValue("1");
+		}
 		m_bIsIronsighted = false;
 		SetIronsightTime();
 		pOwner->EmitSound("Weapon.IronSightOut");

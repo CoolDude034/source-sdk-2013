@@ -457,6 +457,7 @@ void CBaseViewModel::SendViewModelMatchingSequence( int sequence )
 
 #ifdef CLIENT_DLL
 ConVar cl_enable_viewmodel_bobble_while_ironsight("cl_enable_viewmodel_bobble_while_ironsight", "0");
+ConVar cl_disable_viewbobbing("cl_disable_viewbobbing", "0");
 #endif
 
 void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePosition, const QAngle& eyeAngles )
@@ -470,32 +471,44 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 	CBaseCombatWeapon* pWeapon = m_hWeapon.Get();
 	//Allow weapon lagging
 	//only if not in ironsight-mode
-	if (pWeapon == NULL || pWeapon->IsIronsighted() && cl_enable_viewmodel_bobble_while_ironsight.GetBool())
+	if (!cl_disable_viewbobbing.GetBool())
 	{
-		if (pWeapon != NULL)
+		bool shouldViewBob = true;
+		// Allow turning on view bobbing while ADS
+		if (!cl_enable_viewmodel_bobble_while_ironsight.GetBool())
 		{
-#if defined( CLIENT_DLL )
-			if (!prediction->InPrediction())
-#endif
+			if (pWeapon->IsIronsighted())
 			{
-				// add weapon-specific bob 
-				pWeapon->AddViewmodelBob(this, vmorigin, vmangles);
+				shouldViewBob = false;
 			}
 		}
+		if (pWeapon == NULL || shouldViewBob)
+		{
+			if (pWeapon != NULL)
+			{
+#if defined( CLIENT_DLL )
+				if (!prediction->InPrediction())
+#endif
+				{
+					// add weapon-specific bob 
+					pWeapon->AddViewmodelBob(this, vmorigin, vmangles);
+				}
+			}
 
-		// Add model-specific bob even if no weapon associated (for head bob for off hand models)
-		AddViewModelBob(owner, vmorigin, vmangles);
+			// Add model-specific bob even if no weapon associated (for head bob for off hand models)
+			AddViewModelBob(owner, vmorigin, vmangles);
 
-		// Add lag
-		CalcViewModelLag(vmorigin, vmangles, vmangoriginal);
+			// Add lag
+			CalcViewModelLag(vmorigin, vmangles, vmangoriginal);
 
 #if defined( CLIENT_DLL )
-		if (!prediction->InPrediction())
-		{
-			// Let the viewmodel shake at about 10% of the amplitude of the player's view
-			vieweffects->ApplyShake(vmorigin, vmangles, 0.1);
-		}
+			if (!prediction->InPrediction())
+			{
+				// Let the viewmodel shake at about 10% of the amplitude of the player's view
+				vieweffects->ApplyShake(vmorigin, vmangles, 0.1);
+			}
 #endif
+		}
 	}
 
 	CalcIronsights(vmorigin, vmangles);
