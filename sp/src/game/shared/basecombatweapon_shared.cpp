@@ -2996,7 +2996,7 @@ void CBaseCombatWeapon::ToggleIronsights(void)
 
 ConVar cl_enable_ironsight_fov_speed("cl_enable_ironsight_fov_speed", "1.0");
 ConVar cl_disable_ironsight_fov_speed("cl_disable_ironsight_fov_speed", "0.4");
-ConVar cl_disable_ironsights_when_reloading("cl_disable_ironsights_when_reloading", "0");
+ConVar sv_disable_ironsights_when_reloading("sv_disable_ironsights_when_reloading", "0");
 ConVar cl_disable_crosshair_when_ads("cl_disable_crosshair_when_ads", "0");
 
 float GetEnableddIronsightFOVSpeed()
