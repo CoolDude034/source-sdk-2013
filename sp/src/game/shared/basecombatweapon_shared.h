@@ -394,7 +394,7 @@ public:
 
 	virtual int				GetSkinOverride() const { return -1; }
 
-	virtual bool			HasIronsights(void);
+	bool					HasIronsights(void);
 	bool					IsIronsighted(void);
 	void					ToggleIronsights(void);
 	void					EnableIronsights(void);
