@@ -548,6 +548,7 @@ ConVar  alyx_darkness_force( "alyx_darkness_force", "0", FCVAR_CHEAT | FCVAR_REP
 				pPlayer->GiveAmmo(255, "SniperPenetratedRound");
 
 				pPlayer->EquipSuit();
+				pLoadoutData->deleteThis(); // Memory leak fix
 			}
 			pMapData->deleteThis();
 		}
