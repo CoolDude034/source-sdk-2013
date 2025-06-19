@@ -556,8 +556,6 @@ void FileWeaponInfo_t::Parse( KeyValues *pKeyValuesData, const char *szWeaponNam
 		angIronsightAngOffset[ROLL] = pSights->GetFloat("roll", 0.0f);
 
 		flIronsightFOVOffset = pSights->GetFloat("fov", 0.0f);
-
-		bPlayIronSightSounds = pSights->GetBool("playironsightsounds", true);
 	}
 	else
 	{
