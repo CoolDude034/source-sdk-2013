@@ -455,6 +455,10 @@ void CBaseViewModel::SendViewModelMatchingSequence( int sequence )
 #include "ivieweffects.h"
 #endif
 
+#ifdef CLIENT_DLL
+ConVar cl_enable_viewmodel_bobble_while_ironsight("cl_enable_viewmodel_bobble_while_ironsight", "0");
+#endif
+
 void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePosition, const QAngle& eyeAngles )
 {
 	// UNDONE: Calc this on the server?  Disabled for now as it seems unnecessary to have this info on the server
@@ -466,7 +470,7 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 	CBaseCombatWeapon* pWeapon = m_hWeapon.Get();
 	//Allow weapon lagging
 	//only if not in ironsight-mode
-	if (pWeapon == NULL || !pWeapon->IsIronsighted())
+	if (pWeapon == NULL || pWeapon->IsIronsighted() && cl_enable_viewmodel_bobble_while_ironsight.GetBool())
 	{
 		if (pWeapon != NULL)
 		{
