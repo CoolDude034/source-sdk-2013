@@ -431,8 +431,6 @@ bool CWeaponShotgun::StartReload( void )
 	// Make shotgun shell visible
 	SetBodygroup(1,0);
 
-	DisableIronsights();
-
 	pOwner->m_flNextAttack = gpGlobals->curtime;
 	m_flNextPrimaryAttack = gpGlobals->curtime + SequenceDuration();
 
