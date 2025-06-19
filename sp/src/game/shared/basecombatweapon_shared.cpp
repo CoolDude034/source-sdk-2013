@@ -85,8 +85,6 @@ void CC_ToggleIronSights(void)
 	CBaseCombatWeapon* pWeapon = pPlayer->GetActiveWeapon();
 	if (pWeapon == NULL)
 		return;
-	if (!pWeapon->IsIronsighted())
-		return;
 
 	pWeapon->ToggleIronsights();
 
@@ -3004,7 +3002,7 @@ void CBaseCombatWeapon::EnableIronsights(void)
 	if (gpGlobals->maxClients > 1 && !prediction->IsFirstTimePredicted())
 		return;
 #endif
-	if (!HasIronsights())
+	if (!HasIronsights() || m_bIsIronsighted)
 		return;
 
 	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
@@ -3028,7 +3026,7 @@ void CBaseCombatWeapon::DisableIronsights(void)
 	if (gpGlobals->maxClients > 1 && !prediction->IsFirstTimePredicted())
 		return;
 #endif
-	if (!HasIronsights())
+	if (!HasIronsights() || !m_bIsIronsighted)
 		return;
 
 	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
