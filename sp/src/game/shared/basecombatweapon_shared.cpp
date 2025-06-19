@@ -2988,17 +2988,10 @@ bool CBaseCombatWeapon::IsIronsighted(void)
 
 void CBaseCombatWeapon::ToggleIronsights(void)
 {
-	if (m_bInReload == true)
-	{
+	if (m_bIsIronsighted)
 		DisableIronsights();
-	}
 	else
-	{
-		if (m_bIsIronsighted)
-			DisableIronsights();
-		else
-			EnableIronsights();
-	}
+		EnableIronsights();
 }
 
 void CBaseCombatWeapon::EnableIronsights(void)
