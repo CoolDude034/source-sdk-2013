@@ -841,31 +841,37 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 
 				if (V_strnicmp(gpGlobals->mapname.ToCStr(), "d3_c17_", strlen("d3_c17_")) == 0)
 				{
-					if (sv_d3_c17_elite_cops_override.GetInt() == 1)
+					if (FStrEq(className, "npc_metropolice"))
+					{
+						if (sv_d3_c17_elite_cops_override.GetInt() == 1)
+						{
+							char weaponName[MAPKEY_MAXLENGTH];
+							if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+							{
+								pEntity->KeyValue("IsElite", "1");
+							}
+						}
+						else if (sv_d3_c17_elite_cops_override.GetInt() == 2)
+						{
+							pEntity->KeyValue("IsElite", "1");
+						}
+						else if (sv_d3_c17_elite_cops_override.GetInt() == 3)
+						{
+							pEntity->KeyValue("additionalequipment", "weapon_smg1");
+							pEntity->KeyValue("IsElite", "1");
+						}
+					}
+				}
+
+				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_03") || FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_12"))
+				{
+					if (FStrEq(className, "npc_metropolice"))
 					{
 						char weaponName[MAPKEY_MAXLENGTH];
 						if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
 						{
 							pEntity->KeyValue("IsElite", "1");
 						}
-					}
-					else if (sv_d3_c17_elite_cops_override.GetInt() == 2)
-					{
-						pEntity->KeyValue("IsElite", "1");
-					}
-					else if (sv_d3_c17_elite_cops_override.GetInt() == 3)
-					{
-						pEntity->KeyValue("additionalequipment", "weapon_smg1");
-						pEntity->KeyValue("IsElite", "1");
-					}
-				}
-
-				if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_03") || FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_12"))
-				{
-					char weaponName[MAPKEY_MAXLENGTH];
-					if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
-					{
-						pEntity->KeyValue("IsElite", "1");
 					}
 				}
 
@@ -874,12 +880,15 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 					// Swap some of the outpost cops with elite variants
 					if (FStrEq(gpGlobals->mapname.ToCStr(), "d1_canals_08"))
 					{
-						if (pEntity->NameMatches("warehouse_cop_with_manhack") || pEntity->NameMatches("npc_warehouse_assault*"))
+						if (FStrEq(className, "npc_metropolice"))
 						{
-							char weaponName[MAPKEY_MAXLENGTH];
-							if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+							if (pEntity->NameMatches("warehouse_cop_with_manhack") || pEntity->NameMatches("npc_warehouse_assault*"))
 							{
-								pEntity->KeyValue("IsElite", "1");
+								char weaponName[MAPKEY_MAXLENGTH];
+								if (entData.ExtractValue("additionalequipment", weaponName) && FStrEq(weaponName, "weapon_smg1"))
+								{
+									pEntity->KeyValue("IsElite", "1");
+								}
 							}
 						}
 					}
@@ -890,6 +899,7 @@ const char *MapEntity_ParseEntity(CBaseEntity *&pEntity, const char *pEntData, I
 					char keyName[MAPKEY_MAXLENGTH];
 					if (FStrEq(pEntity->GetClassname(), "func_door") && entData.ExtractValue("origin", keyName) && FStrEq(keyName, "-4122.5 -2254.5 139.99"))
 					{
+						pEntity->KeyValue("targetname", "ration_dispenser");
 						pEntity->KeyValue("vscripts", "world/ration_dispenser");
 					}
 
