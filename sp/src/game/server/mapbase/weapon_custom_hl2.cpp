@@ -13,6 +13,7 @@
 #include "player.h"
 #include "npcevent.h"
 #include "in_buttons.h"
+#include "actual_bullet.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -840,6 +841,10 @@ void CHLCustomWeaponGun::ToggleZoom(void)
 	}
 }
 
+extern ConVar sv_enable_hitscan_weapons;
+extern ConVar sk_bullet_speed;
+extern ConVar sv_disable_ironsights_when_reloading;
+
 //-----------------------------------------------------------------------------
 // Purpose: Override so only reload one shell at a time
 // Input  :
@@ -877,6 +882,10 @@ bool CHLCustomWeaponGun::StartReload(void)
 
 	// Make shotgun shell visible
 	SetBodygroup(1, 0);
+	if (sv_disable_ironsights_when_reloading.GetBool())
+	{
+		DisableIronsights();
+	}
 
 	pOwner->m_flNextAttack = gpGlobals->curtime;
 	m_flNextPrimaryAttack = gpGlobals->curtime + SequenceDuration();
@@ -1339,7 +1348,16 @@ void CHLCustomWeaponGun::PrimaryAttack()
 		info.m_flDistance = MAX_TRACE_LENGTH;
 		info.m_iAmmoType = m_iPrimaryAmmoType;
 		info.m_iTracerFreq = 2;
-		FireBullets(info);
+
+		if (sv_enable_hitscan_weapons.GetBool())
+		{
+			FireBullets(info);
+		}
+		else
+		{
+			info.m_pAttacker = pPlayer;
+			FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+		}
 
 		SendWeaponAnim(GetPrimaryAttackActivity());
 	}
@@ -1363,8 +1381,27 @@ void CHLCustomWeaponGun::PrimaryAttack()
 
 		pPlayer->SetMuzzleFlashTime(gpGlobals->curtime + 1.0);
 
-		// Fire the bullets, and force the first shot to be perfectly accuracy
-		pPlayer->FireBullets(m_CustomData.m_nBulletsPerShot, vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, (m_CustomData.m_nBulletsPerShot > 1), true);
+		if (sv_enable_hitscan_weapons.GetBool())
+		{
+			// Fire the bullets, and force the first shot to be perfectly accuracy
+			pPlayer->FireBullets(m_CustomData.m_nBulletsPerShot, vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, (m_CustomData.m_nBulletsPerShot > 1), true);
+		}
+		else
+		{
+			// Do the same above, but with physical/non-hitscan bullets
+			FireBulletsInfo_t info;
+			info.m_iShots = m_CustomData.m_nBulletsPerShot;
+			info.m_vecSrc = vecSrc;
+			info.m_vecDirShooting = vecAiming;
+			info.m_vecSpread = pPlayer->GetAutoaimVector(AUTOAIM_SCALE_DEFAULT);
+			info.m_flDistance = MAX_TRACE_LENGTH;
+			info.m_iAmmoType = m_iPrimaryAmmoType;
+			info.m_iTracerFreq = 0;
+			info.m_pAttacker = pPlayer;
+			info.m_nFlags = (m_CustomData.m_nBulletsPerShot > 1);
+			info.m_bPrimaryAttack = true;
+			FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+		}
 
 		if (m_CustomData.m_bUsePumpAnimation && m_iClip1)
 		{
@@ -1472,14 +1509,46 @@ void CHLCustomWeaponGun::FireNPCPrimaryAttack(CBaseCombatCharacter* pOperator, b
 	if (m_CustomData.m_bFullAuto)
 	{
 		int nShots = WeaponSoundRealtime(SINGLE_NPC);
-		pOperator->FireBullets(nShots * m_CustomData.m_nBulletsPerShot, vecShootOrigin, vecShootDir, vecSpread, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2, entindex(), iMuzzle);
+		if (sv_enable_hitscan_weapons.GetBool())
+		{
+			pOperator->FireBullets(nShots * m_CustomData.m_nBulletsPerShot, vecShootOrigin, vecShootDir, vecSpread, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2, entindex(), iMuzzle);
+		}
+		else
+		{
+			FireBulletsInfo_t info;
+			info.m_iShots = nShots * m_CustomData.m_nBulletsPerShot;
+			info.m_vecSrc = vecShootOrigin;
+			info.m_vecDirShooting = vecShootDir;
+			info.m_vecSpread = vecSpread;
+			info.m_flDistance = MAX_TRACE_LENGTH;
+			info.m_iAmmoType = m_iPrimaryAmmoType;
+			info.m_iTracerFreq = 2;
+			info.m_pAttacker = pOperator;
+			FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+		}
 		pOperator->DoMuzzleFlash();
 		m_iClip1 = m_iClip1 - nShots;
 	}
 	else
 	{
 		WeaponSound(SINGLE_NPC);
-		pOperator->FireBullets(m_CustomData.m_nBulletsPerShot, vecShootOrigin, vecShootDir, vecSpread, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2, entindex(), iMuzzle);
+		if (sv_enable_hitscan_weapons.GetBool())
+		{
+			pOperator->FireBullets(m_CustomData.m_nBulletsPerShot, vecShootOrigin, vecShootDir, vecSpread, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2, entindex(), iMuzzle);
+		}
+		else
+		{
+			FireBulletsInfo_t info;
+			info.m_iShots = m_CustomData.m_nBulletsPerShot;
+			info.m_vecSrc = vecShootOrigin;
+			info.m_vecDirShooting = vecShootDir;
+			info.m_vecSpread = vecSpread;
+			info.m_flDistance = MAX_TRACE_LENGTH;
+			info.m_iAmmoType = m_iPrimaryAmmoType;
+			info.m_iTracerFreq = 2;
+			info.m_pAttacker = pOperator;
+			FireActualBullet(info, sk_bullet_speed.GetInt(), GetTracerType());
+		}
 		pOperator->DoMuzzleFlash();
 		m_iClip1 = m_iClip1 - 1;
 	}

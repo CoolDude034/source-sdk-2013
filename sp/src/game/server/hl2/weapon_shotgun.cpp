@@ -32,6 +32,7 @@ extern ConVar sk_npc_num_shotgun_pellets;
 
 extern ConVar sv_enable_hitscan_weapons;
 extern ConVar sk_bullet_speed;
+extern ConVar sv_disable_ironsights_when_reloading;
 
 class CWeaponShotgun : public CBaseHLCombatWeapon
 {
@@ -430,6 +431,10 @@ bool CWeaponShotgun::StartReload( void )
 
 	// Make shotgun shell visible
 	SetBodygroup(1,0);
+	if (sv_disable_ironsights_when_reloading.GetBool())
+	{
+		DisableIronsights();
+	}
 
 	pOwner->m_flNextAttack = gpGlobals->curtime;
 	m_flNextPrimaryAttack = gpGlobals->curtime + SequenceDuration();
