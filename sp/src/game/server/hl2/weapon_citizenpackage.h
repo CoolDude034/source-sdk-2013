@@ -27,7 +27,7 @@ public:
 	void ItemPostFrame( void );
 	void Drop( const Vector &vecVelocity );
 
-	virtual bool			HasIronsights(void) { return false; }
+	bool HasIronsights(void) { return false; }
 };
 
 #endif // WEAPON_CITIZENPACKAGE_H

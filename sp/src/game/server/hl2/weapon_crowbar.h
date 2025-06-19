@@ -52,7 +52,7 @@ public:
 	int				GetBackupActivityListCount() { return 0; }
 #endif
 
-	virtual bool			HasIronsights(void) { return false; }
+	bool			HasIronsights(void) { return false; }
 
 private:
 	// Animation event handlers

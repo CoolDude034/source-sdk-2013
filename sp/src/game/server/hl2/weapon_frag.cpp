@@ -55,7 +55,7 @@ public:
 
 	bool	ShouldDisplayHUDHint() { return true; }
 
-	virtual bool			HasIronsights(void) { return false; }
+	bool	HasIronsights(void) { return false; }
 
 private:
 	void	ThrowGrenade( CBasePlayer *pPlayer );

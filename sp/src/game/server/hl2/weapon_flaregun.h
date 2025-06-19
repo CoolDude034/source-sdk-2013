@@ -100,6 +100,8 @@ public:
 	void Precache( void );
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
+
+	bool HasIronsights(void) { return false; }
 };
 
 #endif // WEAPON_FLAREGUN_H

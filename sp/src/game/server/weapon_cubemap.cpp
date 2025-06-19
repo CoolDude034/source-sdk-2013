@@ -21,7 +21,7 @@ public:
 
 	void	Spawn( void );
 
-	virtual bool			HasIronsights(void) { return false; }
+	bool	HasIronsights(void) { return false; }
 
 	DECLARE_SERVERCLASS();
 };
