@@ -1462,6 +1462,10 @@ void SENTENCEG_Init()
 		return;
 
 	engine->PrecacheSentenceFile( "scripts/sentences.txt" );
+	// Load map-specfic sentences.txt
+	char sentenceFilePath[128];
+	Q_snprintf(sentenceFilePath, sizeof(sentenceFilePath), "maps/%s_sentences.txt", STRING(gpGlobals->mapname));
+	engine->PrecacheSentenceFile(sentenceFilePath);
 	fSentencesInit = true;
 }
 
