@@ -259,14 +259,12 @@ public:
 	// Check if difficulty is Hard or above
 	virtual bool IsDifficultyHigher()
 	{
-		if (IsSkillLevel(SKILL_HARD) || IsSkillLevel(SKILL_VERY_HARD) || IsSkillLevel(SKILL_NIGHTMARE) )
-			return true;
-		return false;
+		return GetSkillLevel() >= 3;
 	}
 	// Checks if the difficulty is Nightmare
 	virtual bool IsNightmareDifficulty()
 	{
-		if (IsSkillLevel(SKILL_NIGHTMARE))
+		if (IsSkillLevel(SKILL_NIGHTMARE) || GetSkillLevel() > 5)
 			return true;
 		return false;
 	}
