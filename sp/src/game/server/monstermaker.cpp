@@ -582,7 +582,7 @@ ConVar dyn_spawner_spawn_distance("dyn_spawner_spawn_distance", "400", FCVAR_HID
 
 ConVar dyn_spawner_soldier_model("dyn_spawner_soldier_model", "models/combine_soldier.mdl", FCVAR_HIDDEN);
 ConVar dyn_spawner_grenade_amount("dyn_spawner_grenade_amount", "5", FCVAR_HIDDEN);
-ConVar dyn_spawner_fire_children_died_event("dyn_spawner_fire_children_died_event", "1", FCVAR_HIDDEN);
+ConVar dyn_spawner_tactical_variant("dyn_spawner_tactical_variant", "1", FCVAR_HIDDEN);
 
 int g_numNPCs;
 float g_spawnFreq;
@@ -617,14 +617,6 @@ void CNPCMakerDynamic::DeathNotice(CBaseEntity* pVictim)
 
 	// If we're here, we're getting erroneous death messages from children we haven't created
 	AssertMsg(g_numNPCs >= 0, "npc_maker_dynamic receiving child death notice but thinks has no children\n");
-
-	if (dyn_spawner_fire_children_died_event.GetBool())
-	{
-		if (g_numNPCs <= 0)
-		{
-			m_OnAllLiveChildrenDead.FireOutput(this, this);
-		}
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -788,7 +780,7 @@ void CNPCMakerDynamic::MakeNPC(void)
 		pent->SetModelName(MAKE_STRING(dyn_spawner_soldier_model.GetString()));
 	}
 	pent->KeyValue("NumGrenades", dyn_spawner_grenade_amount.GetString());
-	pent->KeyValue("tacticalvariant", "2"); // Pressure the enemy until 25ft i think, this is so they respond quick enough to the scene and then regular AI takes over
+	pent->KeyValue("tacticalvariant", dyn_spawner_tactical_variant.GetString()); // Pressure the enemy until 25ft i think, this is so they respond quick enough to the scene and then regular AI takes over
 
 	ChildPreSpawn(pent);
 
@@ -816,7 +808,7 @@ CNPCSpawnDestination* CNPCMakerDynamic::FindSpawnDestination()
 {
 	CNPCSpawnDestination* pDestinations[MAX_DESTINATION_ENTS];
 	CBaseEntity* pEnt = NULL;
-	CBasePlayer* pPlayer = UTIL_GetLocalPlayer();
+	CBasePlayer* pPlayer = UTIL_GetLocalPlayerOrListenServerHost();
 	int	count = 0;
 
 	if (!pPlayer)
@@ -854,20 +846,14 @@ CNPCSpawnDestination* CNPCMakerDynamic::FindSpawnDestination()
 				vecTopOfHull.y = 0;
 				bool fVisible = (pPlayer->FVisible(vecTest) || pPlayer->FVisible(vecTest + vecTopOfHull));
 
-				if (checkVisibility)
+				if (!fVisible)
+					fValid = false;
+				if (fVisible)
 				{
-					if (!fVisible)
+					if ((pPlayer->GetFlags() & FL_NOTARGET))
 						fValid = false;
-				}
-				else
-				{
-					if (fVisible)
-					{
-						if (!(pPlayer->GetFlags() & FL_NOTARGET))
-							fValid = false;
-						else
-							DevMsg(2, "Spawner %s spawning even though seen due to notarget\n", STRING(GetEntityName()));
-					}
+					else
+						DevMsg(2, "Spawner %s spawning even though seen due to notarget\n", STRING(GetEntityName()));
 				}
 			}
 
