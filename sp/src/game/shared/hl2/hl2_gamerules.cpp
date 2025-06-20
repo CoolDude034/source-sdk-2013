@@ -1917,7 +1917,7 @@ void CHalfLife2::AdjustPlayerDamageTaken( CTakeDamageInfo *pInfo )
 		break;
 
 	default:
-		pInfo->ScaleDamage(sk_dmg_take_scale5.GetFloat() * sk_dmg_take_scale_custom.GetFloat()); // 4
+		pInfo->ScaleDamage(sk_dmg_take_scale5.GetFloat() * sk_dmg_take_scale_custom.GetFloat() * GetSkillLevel()); // 4
 		break;
 
 	}
@@ -1950,7 +1950,7 @@ float CHalfLife2::AdjustPlayerDamageInflicted( float damage )
 		break;
 
 	default:
-		return damage * sk_dmg_inflict_scale5.GetFloat() / sk_dmg_inflict_scale_custom.GetFloat(); // 0.375
+		return damage * sk_dmg_inflict_scale5.GetFloat() / sk_dmg_inflict_scale_custom.GetFloat() * GetSkillLevel(); // 0.375
 		break;
 	}
 }
