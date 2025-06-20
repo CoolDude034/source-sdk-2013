@@ -2983,7 +2983,15 @@ bool CBaseCombatWeapon::HasIronsights(void)
 
 bool CBaseCombatWeapon::IsIronsighted(void)
 {
-	return (m_bIsIronsighted);
+	// Unhandled exception thrown: read access violation. this was nullptr
+	if (this != nullptr)
+	{
+		return (m_bIsIronsighted);
+	}
+	else
+	{
+		return false;
+	}
 }
 
 void CBaseCombatWeapon::ToggleIronsights(void)
