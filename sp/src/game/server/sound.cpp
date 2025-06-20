@@ -554,9 +554,6 @@ void CAmbientGeneric::Activate( void )
 		//  Make sure pitch and volume are set up to the correct value (especially after restoring a .sav file)
 		flags |= ( SND_CHANGE_PITCH | SND_CHANGE_VOL );
 
-		// Pause sounds when game is paused
-		flags |= SND_SHOULDPAUSE;
-
 		// Don't bother sending over to client if volume is zero, though
 		if ( m_dpv.vol > 0 )
 		{
